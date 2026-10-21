@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1450" width="100%" height="100%">
+  <defs>
+    <!-- Pozadina -->
+    <radialGradient id="bgGlow" cx="50%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#141923" />
+      <stop offset="100%" stop-color="#0a0d12" />
+    </radialGradient>
+
+    <!-- Squircle ikone -->
+    <linearGradient id="iconBaseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34383c" />
+      <stop offset="100%" stop-color="#212427" />
+    </linearGradient>
+
+    <!-- Tirkizni gradijenti za X i signal -->
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5ec2c0" />
+      <stop offset="100%" stop-color="#3ea8a6" />
+    </linearGradient>
+
+    <linearGradient id="nodeGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b8ffff" />
+      <stop offset="40%" stop-color="#48d5d2" />
+      <stop offset="100%" stop-color="#289b99" />
+    </linearGradient>
+
+    <!-- Efekti sjaja -->
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="nodeHalo" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Tamna radna pozadina -->
+  <rect width="1000" height="1450" fill="url(#bgGlow)" />
+
+  <!-- TEHNIČKA GRID MREŽA (Vodilice) -->
+  <g stroke="#263342" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.45">
+    <line x1="80" y1="140" x2="920" y2="140" />
+    <line x1="80" y1="680" x2="920" y2="680" />
+    <line x1="230" y1="50" x2="230" y2="760" />
+    <line x1="770" y1="50" x2="770" y2="760" />
+    <line x1="655" y1="50" x2="655" y2="760" />
+    <line x1="80" y1="262" x2="920" y2="262" />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- 1. GLAVNA IKONA (App Icon / Squircle)      -->
+  <!-- ========================================== -->
+  <g id="AppIcon">
+    <!-- Podloga ikone -->
+    <rect x="230" y="140" width="540" height="540" rx="120" ry="120" fill="url(#iconBaseGrad)" stroke="#444b52" stroke-width="2" />
+
+    <!-- SIGNALNI KRUGOVI (Ishodište: cx=655, cy=262) -->
+    <g id="SignalRings" stroke="#48a9a6" fill="none">
+      <circle cx="655" cy="262" r="55" stroke-width="2" opacity="0.75" />
+      <circle cx="655" cy="262" r="105" stroke-width="2.5" opacity="0.6" />
+      <circle cx="655" cy="262" r="160" stroke-width="2" opacity="0.45" />
+      <circle cx="655" cy="262" r="220" stroke-width="1.8" opacity="0.3" />
+      <circle cx="655" cy="262" r="280" stroke-width="1.2" stroke-dasharray="4,8" opacity="0.2" />
+
+      <!-- Podatkovne točke -->
+      <circle cx="718" cy="180" r="7" fill="#6ce5e2" stroke="#212427" stroke-width="2" />
+      <circle cx="790" cy="340" r="8.5" fill="#48a9a6" stroke="#212427" stroke-width="2.5" />
+      <circle cx="830" cy="120" r="11" fill="#48d5d2" stroke="#141923" stroke-width="3" filter="url(#softGlow)" />
+    </g>
+
+    <!-- MONOGRAM FX -->
+    <g id="Monogram">
+      <!-- Slovo F -->
+      <path d="M 320 220 
+               L 508 220 
+               L 508 308 
+               L 396 308 
+               L 396 376 
+               L 488 376 
+               L 488 464 
+               L 396 464 
+               L 396 600 
+               L 320 600 Z" fill="#ffffff" />
+
+      <!-- Krakovi slova X -->
+      <polygon points="420,314 492,314 676,600 604,600" fill="url(#tealGrad)" />
+      <polygon points="668,348 602,348 388,600 460,600" fill="url(#tealGrad)" />
+
+      <!-- Kvadratni čvor (Node) -->
+      <rect x="617" y="224" width="76" height="76" rx="6" ry="6" fill="#48d5d2" opacity="0.5" filter="url(#nodeHalo)" />
+      <rect x="622" y="229" width="66" height="66" rx="6" ry="6" fill="url(#nodeGlowGrad)" stroke="#ffffff" stroke-width="2" />
+    </g>
+  </g>
+
+  <!-- Oznaka ispod ikone -->
+  <text x="500" y="745" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="6" fill="#8b9ba8" text-anchor="middle">
+    HARDWARE NODE & SIGNAL
+  </text>
+
+  <!-- ========================================== -->
+  <!-- 2. LOGOTIP: ČISTI VEKTORSKI OBLICI         -->
+  <!-- ========================================== -->
+  <g id="LogoTypography">
+
+    <!-- CIJELI RED "FLUXA NET" (Savršeno poravnat i centriran od X=95 do X=905) -->
+    <g id="BrandName" transform="translate(0, 810)">
+      
+      <!-- F (Bijelo, širina 70, visina 95) -->
+      <path d="M 95 0 H 165 V 19 H 117 V 39 H 160 V 58 H 117 V 95 H 95 Z" fill="#ffffff" />
+
+      <!-- L (Bijelo, širina 62, visina 95) -->
+      <path d="M 190 0 H 212 V 76 H 252 V 95 H 190 Z" fill="#ffffff" />
+
+      <!-- U (Bijelo tijelo) -->
+      <path d="M 275 22 H 297 V 67 C 297 73 302 77 308 77 C 314 77 319 73 319 67 V 0 H 341 V 67 C 341 84 327 96 308 96 C 289 96 275 84 275 67 Z" fill="#ffffff" />
+      
+      <!-- U (Tirkizni kvadrat na vrhu lijevog kraka) -->
+      <rect x="275" y="0" width="22" height="22" fill="#48a9a6" />
+
+      <!-- X (Tirkizno, širina 80, visina 95) -->
+      <polygon points="365,0 391,0 445,95 419,95" fill="#48a9a6" />
+      <polygon points="445,0 419,0 365,95 391,95" fill="#48a9a6" />
+
+      <!-- A (Bijelo, širina 82, visina 95) -->
+      <path d="M 496 0 H 522 L 553 95 H 529 L 522 73 H 496 L 489 95 H 465 Z M 502 24 L 499 55 H 519 Z" fill="#ffffff" />
+
+      <!-- RAZMAK / VERTIKALNI MALI SEPARATOR (Diskretan) -->
+      <rect x="585" y="15" width="2" height="65" fill="#2a3540" />
+
+      <!-- N E T (Geometrijski, ravnomjerno raspoređen od X=625 do X=905) -->
+      <!-- N -->
+      <path d="M 625 95 V 0 H 639 L 684 75 V 0 H 697 V 95 H 683 L 638 20 V 95 Z" fill="#9eb0bd" />
+      <!-- E -->
+      <path d="M 735 95 V 0 H 790 V 13 H 748 V 41 H 784 V 54 H 748 V 82 H 790 V 95 Z" fill="#9eb0bd" />
+      <!-- T -->
+      <path d="M 825 13 V 0 H 905 V 13 H 871 V 95 H 858 V 13 Z" fill="#9eb0bd" />
+    </g>
+
+    <!-- DONJI RED: ((•)) STUDIOBRIDGE -->
+    <g id="StudioBridgeRow" transform="translate(500, 975)">
+      <!-- Broadcast simbol -->
+      <g transform="translate(-240, -10)" stroke="#48a9a6" fill="none" stroke-linecap="round">
+        <circle cx="20" cy="0" r="5" fill="#48a9a6" stroke="none" />
+        <path d="M 11 -11 A 15 15 0 0 0 11 11" stroke-width="2.5" />
+        <path d="M 29 -11 A 15 15 0 0 1 29 11" stroke-width="2.5" />
+        <path d="M 4 -19 A 25 25 0 0 0 4 19" stroke-width="2.2" opacity="0.6" />
+        <path d="M 36 -19 A 25 25 0 0 1 36 19" stroke-width="2.2" opacity="0.6" />
+      </g>
+
+      <!-- Čisti tekst STUDIOBRIDGE s ujednačenim kerningom -->
+      <text x="-175" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="400" letter-spacing="12" fill="#d3dde4" text-anchor="start">
+        STUDIOBRIDGE
+      </text>
+    </g>
+
+  </g>
+
+  <!-- ========================================== -->
+  <!-- 3. PODNOŽJE (Razdjelnik i potpis)          -->
+  <!-- ========================================== -->
+  <line x1="250" y1="1080" x2="750" y2="1080" stroke="#252f38" stroke-width="1.5" />
+  
+  <text x="500" y="1135" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace" font-size="20" font-weight="500" letter-spacing="7" fill="#5a6e7f" text-anchor="middle">
+    CONCEPT 2: NODE & SIGNAL
+  </text>
+</svg>
