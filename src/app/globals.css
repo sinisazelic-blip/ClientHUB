@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #fcfbfa;
-  --foreground: #1c1917;
+  --background: #ecf5f6;
+  --foreground: #0f172a;
 }
 
 body {
@@ -14,39 +14,25 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom scrollbars */
+/* Custom scrollbars with soft teal accents */
 ::-webkit-scrollbar {
-  width: 9px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f5f2eb;
+  background: #e2eef0;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1;
-  border-radius: 5px;
+  background: #cbdfe3;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #ff6b2b;
+  background: #0d9488;
 }
 
-/* Studio glowing accent utilities */
-.glow-amber {
-  box-shadow: 0 10px 40px -10px rgba(245, 158, 11, 0.3);
-}
-
-.glow-terracotta {
-  box-shadow: 0 10px 40px -10px rgba(255, 107, 43, 0.35);
-}
-
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin-slow {
-  animation: spin-slow 16s linear infinite;
+.studio-light-bg {
+  background-color: #ecf5f6;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(20, 184, 166, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(13, 148, 136, 0.06) 0px, transparent 50%);
 }
