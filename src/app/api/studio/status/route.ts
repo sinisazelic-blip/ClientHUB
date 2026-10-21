@@ -32,7 +32,8 @@ export interface SessionItem {
 // Global in-memory state
 let bridgeStatus = {
   isOnline: true,
-  studioName: "Studio TAF",
+  studioName: "",
+  language: "bs",
   lastSeen: Date.now(),
   ip: "127.0.0.1",
 };
@@ -118,6 +119,7 @@ export async function GET() {
     success: true,
     isOnline: bridgeStatus.isOnline && !isStale,
     studioName: bridgeStatus.studioName,
+    language: bridgeStatus.language,
     lastSeen: bridgeStatus.lastSeen,
     activeSessionId,
     activeSession,
@@ -133,7 +135,8 @@ export async function POST(req: Request) {
     if (body.type === "HEARTBEAT" || typeof body.isOnline === "boolean") {
       bridgeStatus = {
         isOnline: Boolean(body.isOnline),
-        studioName: body.studioName || bridgeStatus.studioName,
+        studioName: typeof body.studioName === "string" ? body.studioName : bridgeStatus.studioName,
+        language: typeof body.language === "string" ? body.language : bridgeStatus.language,
         lastSeen: Date.now(),
         ip: req.headers.get("x-forwarded-for") || "127.0.0.1",
       };

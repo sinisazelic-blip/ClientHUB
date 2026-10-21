@@ -27,6 +27,7 @@ export default function ClientHubPage() {
   // Sessions and Active Session state
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
+  const [studioName, setStudioName] = useState<string>("");
 
   // Client Talkback (ON / OFF toggle)
   const [clientTalkbackOn, setClientTalkbackOn] = useState<boolean>(false);
@@ -56,6 +57,9 @@ export default function ClientHubPage() {
       if (data.success) {
         setSessions(data.sessions || []);
         setActiveSession(data.activeSession || null);
+        if (data.studioName !== undefined) {
+          setStudioName(data.studioName);
+        }
 
         if (data.activeSession?.isDoorOpen && currentRole !== "studio_director") {
           setIsInStudio(true);
@@ -208,6 +212,7 @@ export default function ClientHubPage() {
         /* RECEPTION LOBBY & CALENDAR */
         <ReceptionLobby
           role={currentRole}
+          studioName={studioName}
           sessions={sessions}
           activeSession={activeSession}
           onEnterStudio={handleEnterStudio}
@@ -235,7 +240,7 @@ export default function ClientHubPage() {
                     {activeSession.projectName}
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium">
-                    Spiker: <strong className="text-teal-700">{activeSession.speakerName}</strong> • Studio TAF
+                    Spiker: <strong className="text-teal-700">{activeSession.speakerName}</strong>{studioName ? ` • ${studioName}` : ""}
                   </div>
                 </div>
               </div>

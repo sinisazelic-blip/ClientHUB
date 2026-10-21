@@ -20,6 +20,7 @@ import { format24Time } from "@/lib/formatTime";
 
 interface ReceptionLobbyProps {
   role: "studio_director" | "agency_tenant" | "guest_participant";
+  studioName?: string;
   sessions: SessionItem[];
   activeSession: SessionItem | null;
   onEnterStudio: (sessionId: string) => void;
@@ -28,6 +29,7 @@ interface ReceptionLobbyProps {
 
 export default function ReceptionLobby({
   role,
+  studioName,
   sessions,
   activeSession,
   onEnterStudio,
@@ -96,7 +98,7 @@ export default function ReceptionLobby({
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold uppercase tracking-wider mb-4 shadow-sm">
             <Radio className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
-            Studio TAF • Klijentska Recepcija
+            {studioName ? `${studioName} • ` : ""}Čekaonica
           </div>
 
           <h1 className="text-2xl font-black text-slate-900 mb-2">
