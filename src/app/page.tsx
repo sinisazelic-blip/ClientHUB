@@ -13,8 +13,10 @@ import {
   LogOut,
   MessageSquare,
   ExternalLink,
+  Send,
 } from "lucide-react";
 import { SessionItem, SessionTake } from "@/app/api/studio/status/route";
+import { format24TimeShort } from "@/lib/formatTime";
 
 type UserRole = "agency_tenant" | "guest_participant" | "studio_director";
 
@@ -120,7 +122,7 @@ export default function ClientHubPage() {
       {
         sender,
         text: newChatText.trim(),
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        time: format24TimeShort(new Date()),
         isDirector: currentRole === "studio_director",
       },
     ]);
@@ -170,7 +172,7 @@ export default function ClientHubPage() {
                   : "text-slate-600 hover:text-teal-900"
               }`}
             >
-              1. Studio Režija (Tonac)
+              Studio
             </button>
             <button
               onClick={() => setCurrentRole("agency_tenant")}
@@ -180,7 +182,7 @@ export default function ClientHubPage() {
                   : "text-slate-600 hover:text-teal-900"
               }`}
             >
-              2. Naručilac (Agencija)
+              Naručilac
             </button>
             <button
               onClick={() => setCurrentRole("guest_participant")}
@@ -190,7 +192,7 @@ export default function ClientHubPage() {
                   : "text-slate-600 hover:text-teal-900"
               }`}
             >
-              3. Pozvani Gost / Klijent
+              Klijent
             </button>
           </div>
         </div>

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import FluxaxNetLogo from "@/components/FluxaxNetLogo";
 import { SessionItem } from "@/app/api/studio/status/route";
+import { format24Time } from "@/lib/formatTime";
 
 interface ReceptionLobbyProps {
   role: "studio_director" | "agency_tenant" | "guest_participant";
@@ -141,7 +142,7 @@ export default function ReceptionLobby({
               <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-teal-200 font-mono text-xl font-bold text-teal-800 shadow-sm">
                 <Clock className="w-5 h-5 text-teal-600" />
                 <span suppressHydrationWarning>
-                  {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  {format24Time(currentTime)}
                 </span>
               </div>
             </div>
@@ -168,7 +169,7 @@ export default function ReceptionLobby({
             <div className="flex items-center gap-3 mb-1">
               <FluxaxNetLogo size="md" />
               <span className="px-3 py-0.5 rounded-full bg-teal-100/80 text-teal-900 border border-teal-300 text-[11px] font-bold uppercase tracking-wider shadow-sm">
-                Recepcija & Raspored Studija
+                Raspored termina
               </span>
             </div>
             <p className="text-xs text-slate-600 font-medium">
@@ -180,7 +181,7 @@ export default function ReceptionLobby({
             <div className="px-4 py-2 rounded-xl bg-white border border-teal-200 font-mono text-sm font-bold text-teal-800 shadow-sm flex items-center gap-2">
               <Clock className="w-4 h-4 text-teal-600" />
               <span suppressHydrationWarning>
-                {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                {format24Time(currentTime)}
               </span>
             </div>
             <button

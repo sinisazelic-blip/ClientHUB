@@ -19,6 +19,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { SessionItem, SessionTake } from "@/app/api/studio/status/route";
+import { format24Time } from "@/lib/formatTime";
 
 interface StudioDirectorConsoleProps {
   session: SessionItem;
@@ -213,7 +214,7 @@ export default function StudioDirectorConsole({
             <div className="text-sm font-bold text-slate-900 leading-tight flex items-center gap-2">
               <span>{session.projectName}</span>
               <span className="text-[10px] text-teal-800 font-mono px-2 py-0.5 rounded bg-teal-100/80 border border-teal-300 font-bold">
-                REŽIJA
+                STUDIO
               </span>
             </div>
             <div className="text-[11px] text-slate-600">
@@ -510,7 +511,7 @@ export default function StudioDirectorConsole({
                   Tačno Vrijeme Studija
                 </span>
                 <div className="font-mono text-xl font-bold text-slate-800" suppressHydrationWarning>
-                  {clockTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  {format24Time(clockTime)}
                 </div>
                 <span className="text-xs text-teal-700 block mt-1 font-bold">
                   Spiker: {session.speakerName}
