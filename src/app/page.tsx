@@ -16,7 +16,7 @@ import {
   Send,
 } from "lucide-react";
 import { SessionItem, SessionTake } from "@/app/api/studio/status/route";
-import { format24TimeShort } from "@/lib/formatTime";
+import { format24Time, format24TimeShort } from "@/lib/formatTime";
 
 type UserRole = "agency_tenant" | "guest_participant" | "studio_director";
 
@@ -302,7 +302,7 @@ export default function ClientHubPage() {
                           Tačno Vrijeme Studija
                         </span>
                         <div className="font-mono text-2xl font-bold text-teal-800" suppressHydrationWarning>
-                          {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                          {format24Time(currentTime)}
                         </div>
                         <span className="text-xs text-slate-600 block mt-1">
                           Spiker: <strong className="text-teal-700 font-bold">{activeSession.speakerName}</strong>
@@ -394,22 +394,6 @@ export default function ClientHubPage() {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Download Master Button */}
-                  {activeSession.fluxaDownloadUrl && (
-                    <div className="mt-5 pt-4 border-t border-teal-100 flex justify-end">
-                      <a
-                        href={activeSession.fluxaDownloadUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="py-2.5 px-4 rounded-xl bg-white hover:bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-                      >
-                        <Download className="w-4 h-4 text-teal-600" />
-                        <span>Preuzmi Gotove Master Fajlove (Fluxa Drive)</span>
-                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                      </a>
                     </div>
                   )}
                 </div>

@@ -648,22 +648,6 @@ export default function StudioDirectorConsole({
               </div>
             </div>
           )}
-
-          {/* Download Final Button */}
-          {session.fluxaDownloadUrl && (
-            <div className="mt-5 pt-4 border-t border-teal-100 flex justify-end">
-              <a
-                href={session.fluxaDownloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-2.5 px-4 rounded-xl bg-white hover:bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-              >
-                <Download className="w-4 h-4 text-teal-600" />
-                <span>Preuzmi Gotove Master Fajlove (Fluxa Drive)</span>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-              </a>
-            </div>
-          )}
         </div>
       </main>
     </div>
