@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import FluxaxNetLogo from "@/components/FluxaxNetLogo";
 import {
   Sliders,
@@ -64,12 +64,15 @@ export default function StudioDirectorConsole({
   // Live Clock
   const [clockTime, setClockTime] = useState(new Date());
 
-  // WebSocket connect to StudioBridge for real hardware meters
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // WebSocket connect to StudioBridge for real hardware meters and controls
   useEffect(() => {
     let ws: WebSocket | null = null;
     try {
       const host = window.location.hostname || "127.0.0.1";
       ws = new WebSocket(`ws://${host}:4040/ws`);
+      wsRef.current = ws;
 
       ws.onopen = () => setIsBridgeOnline(true);
       ws.onclose = () => setIsBridgeOnline(false);
@@ -89,12 +92,31 @@ export default function StudioDirectorConsole({
               setMasterDbR(out8.db <= -59.5 ? "-inf dB" : `${out8.db.toFixed(1)} dB`);
             }
           }
+          if (msg.type === "FULL_STATE" && msg.data?.hardwareState?.outputs) {
+            const outs = msg.data.hardwareState.outputs;
+            const cr = outs.find((o: any) => o.id === 7);
+            const booth = outs.find((o: any) => o.id === 3);
+            const client = outs.find((o: any) => o.id === 1);
+            if (cr && typeof cr.level === "number") setVolCR(cr.level);
+            if (booth && typeof booth.level === "number") setVolBooth(booth.level);
+            if (client && typeof client.level === "number") setVolClient(client.level);
+          }
+          if (msg.type === "HARDWARE_UPDATED" && msg.hardwareState?.outputs) {
+            const outs = msg.hardwareState.outputs;
+            const cr = outs.find((o: any) => o.id === 7);
+            const booth = outs.find((o: any) => o.id === 3);
+            const client = outs.find((o: any) => o.id === 1);
+            if (cr && typeof cr.level === "number") setVolCR(cr.level);
+            if (booth && typeof booth.level === "number") setVolBooth(booth.level);
+            if (client && typeof client.level === "number") setVolClient(client.level);
+          }
         } catch (_) {}
       };
     } catch (_) {}
 
     return () => {
       if (ws) ws.close();
+      wsRef.current = null;
     };
   }, []);
 
@@ -198,6 +220,27 @@ export default function StudioDirectorConsole({
       .padStart(2, "0");
     const s = (sec % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
+  };
+
+  const handleVolCRChange = (val: number) => {
+    setVolCR(val);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "UPDATE_CHANNEL", channelType: "output", id: 7, level: val }));
+    }
+  };
+
+  const handleVolBoothChange = (val: number) => {
+    setVolBooth(val);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "UPDATE_CHANNEL", channelType: "output", id: 3, level: val }));
+    }
+  };
+
+  const handleVolClientChange = (val: number) => {
+    setVolClient(val);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "UPDATE_CHANNEL", channelType: "output", id: 1, level: val }));
+    }
   };
 
   const currentSegment = segments[activeSegmentIndex] || segments[0];
@@ -342,7 +385,7 @@ export default function StudioDirectorConsole({
             {/* Talkback Toggle */}
             <div className="mt-4 pt-4 border-t border-teal-100 flex items-center justify-between">
               <div className="text-xs text-slate-600">
-                Komunikacija: <strong className="text-slate-800">Režija $\leftrightarrow$ Glumačka soba $\leftrightarrow$ Klijenti</strong>
+                Komunikacija: <strong className="text-slate-800">Režija ⇄ Glumačka soba ⇄ Klijenti</strong>
               </div>
 
               <button
@@ -365,15 +408,20 @@ export default function StudioDirectorConsole({
               <div className="flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-teal-600" />
                 <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  Preslušavanje (Monitoring)
+                  Preslušavanje (RME Izlazi)
                 </span>
               </div>
             </div>
 
             <div className="space-y-4 my-auto">
               <div>
-                <div className="flex justify-between text-xs mb-1 font-medium">
-                  <span className="text-slate-700">Režija Zvučnici (CR):</span>
+                <div className="flex justify-between items-center text-xs mb-1 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-700">Režija Zvučnici (CR):</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold">
+                      Izlaz 7/8 SPDIF
+                    </span>
+                  </div>
                   <span className="font-mono text-teal-700 font-bold">{volCR}%</span>
                 </div>
                 <input
@@ -381,14 +429,19 @@ export default function StudioDirectorConsole({
                   min="0"
                   max="100"
                   value={volCR}
-                  onChange={(e) => setVolCR(Number(e.target.value))}
+                  onChange={(e) => handleVolCRChange(Number(e.target.value))}
                   className="w-full accent-teal-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                 />
               </div>
 
               <div>
-                <div className="flex justify-between text-xs mb-1 font-medium">
-                  <span className="text-slate-700">Slušalice Spikera (Booth):</span>
+                <div className="flex justify-between items-center text-xs mb-1 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-700">Slušalice Spikera (Booth):</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold">
+                      Izlaz 3/4
+                    </span>
+                  </div>
                   <span className="font-mono text-amber-700 font-bold">{volBooth}%</span>
                 </div>
                 <input
@@ -396,14 +449,19 @@ export default function StudioDirectorConsole({
                   min="0"
                   max="100"
                   value={volBooth}
-                  onChange={(e) => setVolBooth(Number(e.target.value))}
+                  onChange={(e) => handleVolBoothChange(Number(e.target.value))}
                   className="w-full accent-amber-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                 />
               </div>
 
               <div>
-                <div className="flex justify-between text-xs mb-1 font-medium">
-                  <span className="text-slate-700">Klijentski Laptopi (Stream):</span>
+                <div className="flex justify-between items-center text-xs mb-1 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-700">Klijentski Laptopi (Stream):</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold">
+                      Izlaz 1/2
+                    </span>
+                  </div>
                   <span className="font-mono text-emerald-700 font-bold">{volClient}%</span>
                 </div>
                 <input
@@ -411,7 +469,7 @@ export default function StudioDirectorConsole({
                   min="0"
                   max="100"
                   value={volClient}
-                  onChange={(e) => setVolClient(Number(e.target.value))}
+                  onChange={(e) => handleVolClientChange(Number(e.target.value))}
                   className="w-full accent-emerald-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                 />
               </div>
