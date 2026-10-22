@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { ClaHardwareConsole } from "./ClaHardwareConsole";
 import {
   Mic,
   MicOff,
@@ -501,132 +502,33 @@ export default function RemoteSession() {
               </div>
             </div>
 
-            {/* CLIENT PERSONAL CUE MIX (BALANS SLUŠANJA ZA KLIJENTA) */}
-            <div className="mb-8 p-6 rounded-2xl bg-stone-900 border border-stone-800 shadow-lg text-white">
-              <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-800 mb-6">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-orange-400" />
-                    <span className="text-xs font-mono font-bold tracking-widest text-orange-400 uppercase">
-                      VAŠ PERSONALNI BALANS SLUŠANJA (CUE MIX)
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-400 mt-1">
-                    Prilagodite šta i koliko glasno čujete u svojim slušalicama bez uticaja na snimanje u režiji.
-                  </p>
+            {/* CLIENT PERSONAL CUE MIX (CLA VINTAGE HARDWARE CONSOLE) */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-3 px-2">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-red-600" />
+                  <span className="text-xs font-mono font-bold tracking-widest text-stone-800 uppercase">
+                    PERSONALNI HARVERSKI PULT (CUE & MONITOR MIX)
+                  </span>
                 </div>
-
-                <button
-                  onClick={() => setClientCueMix({ voice: 90, music: 55, director: 85, master: 80 })}
-                  className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] font-mono text-stone-300 transition-colors flex items-center gap-1.5 cursor-pointer"
-                  title="Vrati preporučeni balans"
-                >
-                  <RefreshCw className="w-3 h-3 text-orange-400" />
-                  <span>Resetuj na 0 dB</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* 1. SPIKER (VOKAL) */}
-                <div className="bg-stone-950/80 p-4 rounded-xl border border-amber-900/40 flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                      <Mic className="w-3.5 h-3.5" />
-                      <span>Spiker (Vokal)</span>
-                    </span>
-                    <span className="text-xs font-mono font-bold text-amber-300">
-                      {clientCueMix.voice}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={clientCueMix.voice}
-                    onChange={(e) => setClientCueMix(p => ({ ...p, voice: Number(e.target.value) }))}
-                    className="w-full accent-amber-400 cursor-pointer mb-2"
-                  />
-                  <div className="text-[10px] text-stone-500 font-mono flex justify-between">
-                    <span>Gluva soba</span>
-                    <span>Jasnoća glasa</span>
-                  </div>
-                </div>
-
-                {/* 2. MUZIKA (DAW PODLOGA) */}
-                <div className="bg-stone-950/80 p-4 rounded-xl border border-purple-900/40 flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5" />
-                      <span>Muzika (Podloga)</span>
-                    </span>
-                    <span className="text-xs font-mono font-bold text-purple-300">
-                      {clientCueMix.music}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={clientCueMix.music}
-                    onChange={(e) => setClientCueMix(p => ({ ...p, music: Number(e.target.value) }))}
-                    className="w-full accent-purple-400 cursor-pointer mb-2"
-                  />
-                  <div className="text-[10px] text-stone-500 font-mono flex justify-between">
-                    <span>DAW matrica</span>
-                    <span>Utišaj za razumljivost</span>
-                  </div>
-                </div>
-
-                {/* 3. REŽIJA (TONAC TALKBACK) */}
-                <div className="bg-stone-950/80 p-4 rounded-xl border border-blue-900/40 flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
-                      <Headphones className="w-3.5 h-3.5" />
-                      <span>Režija (Siniša)</span>
-                    </span>
-                    <span className="text-xs font-mono font-bold text-blue-300">
-                      {clientCueMix.director}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={clientCueMix.director}
-                    onChange={(e) => setClientCueMix(p => ({ ...p, director: Number(e.target.value) }))}
-                    className="w-full accent-blue-400 cursor-pointer mb-2"
-                  />
-                  <div className="text-[10px] text-stone-500 font-mono flex justify-between">
-                    <span>Režijski mikrofon</span>
-                    <span>Instrukcije tonca</span>
-                  </div>
-                </div>
-
-                {/* 4. MASTER VOLUMEN ZA KLIJENTA */}
-                <div className="bg-stone-950/80 p-4 rounded-xl border border-emerald-900/40 flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>Master Slušalice</span>
-                    </span>
-                    <span className="text-xs font-mono font-bold text-emerald-300">
-                      {clientCueMix.master}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={clientCueMix.master}
-                    onChange={(e) => setClientCueMix(p => ({ ...p, master: Number(e.target.value) }))}
-                    className="w-full accent-emerald-400 cursor-pointer mb-2"
-                  />
-                  <div className="text-[10px] text-stone-500 font-mono flex justify-between">
-                    <span>Ukupna jačina</span>
-                    <span>Vaš izlaz</span>
-                  </div>
+                <div className="text-[11px] font-mono text-stone-500">
+                  Direct DSP Zero-Bleed • 48kHz 24-bit
                 </div>
               </div>
+
+              <ClaHardwareConsole
+                title="Studio TAF"
+                subtitle="Analog Hardware Master"
+                onMixChange={(mix) => {
+                  // Keep clientCueMix in sync with hardware faders
+                  setClientCueMix({
+                    voice: Math.round(((mix.voice + 10) / 20) * 100),
+                    music: Math.round(((mix.music + 10) / 20) * 100),
+                    director: Math.round(((mix.director + 10) / 20) * 100),
+                    master: Math.round(((mix.output + 10) / 20) * 100),
+                  });
+                }}
+              />
             </div>
 
             {/* Live Synchronized Script & Takes Approval */}
