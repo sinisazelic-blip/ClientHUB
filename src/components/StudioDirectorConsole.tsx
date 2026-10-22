@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { SessionItem, SessionTake } from "@/app/api/studio/status/route";
 import { format24Time } from "@/lib/formatTime";
+import { APP_CONFIG } from "@/config/appConfig";
 
 interface StudioDirectorConsoleProps {
   session: SessionItem;
@@ -52,10 +53,15 @@ export default function StudioDirectorConsole({
   // Video Preview ON / OFF
   const [isVideoOn, setIsVideoOn] = useState<boolean>(session.videoEnabled || false);
 
-  // Komunikacijski nivoi (Tačka 2)
+  // Komunikacijski nivoi (Tačka 2) - čuvaju stanje klizača bez preskakanja
   const [volCR, setVolCR] = useState<number>(85);
   const [volBooth, setVolBooth] = useState<number>(75);
   const [volClient, setVolClient] = useState<number>(90);
+
+  // Live signal meters sa izlaza (odvojeno od pozicije klizača)
+  const [meterCR, setMeterCR] = useState<number>(0);
+  const [meterBooth, setMeterBooth] = useState<number>(0);
+  const [meterClient, setMeterClient] = useState<number>(0);
 
   // Fleksibilni Tejkovi po Segmentima (Slika 4)
   const [segments, setSegments] = useState(session.segments || []);
@@ -91,24 +97,18 @@ export default function StudioDirectorConsole({
               setMasterVuR(out8.level);
               setMasterDbR(out8.db <= -59.5 ? "-inf dB" : `${out8.db.toFixed(1)} dB`);
             }
+            // Zasebni metering nivoi izlaza (ne diraju slajdere!)
+            const cr = msg.outputs?.find((o: any) => o.id === 7);
+            const booth = msg.outputs?.find((o: any) => o.id === 3);
+            const client = msg.outputs?.find((o: any) => o.id === 1);
+            if (cr && typeof cr.level === "number") setMeterCR(cr.level);
+            if (booth && typeof booth.level === "number") setMeterBooth(booth.level);
+            if (client && typeof client.level === "number") setMeterClient(client.level);
           }
-          if (msg.type === "FULL_STATE" && msg.data?.hardwareState?.outputs) {
-            const outs = msg.data.hardwareState.outputs;
-            const cr = outs.find((o: any) => o.id === 7);
-            const booth = outs.find((o: any) => o.id === 3);
-            const client = outs.find((o: any) => o.id === 1);
-            if (cr && typeof cr.level === "number") setVolCR(cr.level);
-            if (booth && typeof booth.level === "number") setVolBooth(booth.level);
-            if (client && typeof client.level === "number") setVolClient(client.level);
-          }
-          if (msg.type === "HARDWARE_UPDATED" && msg.hardwareState?.outputs) {
-            const outs = msg.hardwareState.outputs;
-            const cr = outs.find((o: any) => o.id === 7);
-            const booth = outs.find((o: any) => o.id === 3);
-            const client = outs.find((o: any) => o.id === 1);
-            if (cr && typeof cr.level === "number") setVolCR(cr.level);
-            if (booth && typeof booth.level === "number") setVolBooth(booth.level);
-            if (client && typeof client.level === "number") setVolClient(client.level);
+          if (msg.type === "TALKBACK_STATE") {
+            if (typeof msg.muted === "boolean") {
+              setTalkbackOn(!msg.muted);
+            }
           }
         } catch (_) {}
       };
@@ -222,6 +222,18 @@ export default function StudioDirectorConsole({
     return `${m}:${s}`;
   };
 
+  const handleToggleTalkback = () => {
+    const nextState = !talkbackOn;
+    setTalkbackOn(nextState);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "TALKBACK_TOGGLE",
+        enabled: nextState,
+        muted: !nextState,
+      }));
+    }
+  };
+
   const handleVolCRChange = (val: number) => {
     setVolCR(val);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -258,6 +270,9 @@ export default function StudioDirectorConsole({
               <span>{session.projectName}</span>
               <span className="text-[10px] text-teal-800 font-mono px-2 py-0.5 rounded bg-teal-100/80 border border-teal-300 font-bold">
                 STUDIO
+              </span>
+              <span className="text-[10px] text-teal-700 font-mono px-2 py-0.5 rounded bg-teal-50 border border-teal-200 font-bold" title="Aktivni build Client HUB-a">
+                Build {APP_CONFIG.build}
               </span>
             </div>
             <div className="text-[11px] text-slate-600">
@@ -389,7 +404,7 @@ export default function StudioDirectorConsole({
               </div>
 
               <button
-                onClick={() => setTalkbackOn(!talkbackOn)}
+                onClick={handleToggleTalkback}
                 className={`py-2 px-5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 border shadow-sm ${
                   talkbackOn
                     ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-400 shadow-amber-500/20"

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { SessionItem, SessionTake } from "@/app/api/studio/status/route";
 import { format24Time, format24TimeShort } from "@/lib/formatTime";
+import { APP_CONFIG } from "@/config/appConfig";
 
 type UserRole = "agency_tenant" | "guest_participant" | "studio_director";
 
@@ -204,7 +205,11 @@ export default function ClientHubPage() {
 
         <div className="text-[11px] text-teal-800 font-mono font-semibold flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>FluxaX Net Client HUB • Port 1991</span>
+          <span>FluxaX Net Client HUB</span>
+          <span className="px-2 py-0.5 rounded bg-teal-100/90 text-teal-900 border border-teal-300 font-bold font-mono text-[10px]">
+            Build {APP_CONFIG.build}
+          </span>
+          <span className="text-slate-400">• Port 1991</span>
         </div>
       </div>
 
