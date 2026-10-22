@@ -517,17 +517,12 @@ export default function RemoteSession() {
               </div>
 
               <ClaHardwareConsole
-                title="Studio TAF"
-                subtitle="Analog Hardware Master"
-                onMixChange={(mix) => {
-                  // Keep clientCueMix in sync with hardware faders
-                  setClientCueMix({
-                    voice: Math.round(((mix.voice + 10) / 20) * 100),
-                    music: Math.round(((mix.music + 10) / 20) * 100),
-                    director: Math.round(((mix.director + 10) / 20) * 100),
-                    master: Math.round(((mix.output + 10) / 20) * 100),
-                  });
-                }}
+                studioName="Studio TAF"
+                projectName="Jesenja Kampanja 2026"
+                speakerName="Talent A"
+                isOnAir={isRecording}
+                isTalkbackActive={clientTalkback}
+                onTalkbackToggle={(act) => setClientTalkback(act)}
               />
             </div>
 

@@ -278,10 +278,10 @@ export default function ClientHubPage() {
             <main className="flex-1 p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Visual Screen & Scenario */}
               <div className="lg:col-span-8 space-y-6">
-                {/* VIDEO OR STUDIO RADIO INFO BOX */}
-                <div className="bg-white border border-teal-200/80 rounded-2xl overflow-hidden shadow-sm">
+                {/* VIDEO OR STUDIO RADIO MONITOR */}
+                <div className="rounded-2xl overflow-hidden shadow-sm">
                   {activeSession.videoEnabled ? (
-                    <div className="p-8 text-center bg-slate-900 text-white min-h-[240px] flex flex-col items-center justify-center">
+                    <div className="p-8 text-center bg-slate-900 border border-teal-200/80 rounded-2xl text-white min-h-[240px] flex flex-col items-center justify-center">
                       <Tv className="w-12 h-12 text-teal-400 mb-2 opacity-80" />
                       <h4 className="text-sm font-bold text-white mb-1">
                         Video prozor iz DAW / montažnog programa
@@ -291,66 +291,16 @@ export default function ClientHubPage() {
                       </p>
                     </div>
                   ) : (
-                    /* Studio Radio Info Box */
-                    <div className="p-8 bg-gradient-to-r from-teal-50/50 via-white to-teal-50/50 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-teal-800 tracking-wider block mb-1">
-                          Projekat
-                        </span>
-                        <h3 className="text-2xl font-black text-slate-900">{activeSession.projectName}</h3>
-                        <span className="text-xs text-slate-600 block mt-1">
-                          Naručilac: <strong className="text-slate-900">{activeSession.clientName}</strong>
-                        </span>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="text-[10px] uppercase font-bold text-teal-800 tracking-wider block mb-1">
-                          Tačno Vrijeme Studija
-                        </span>
-                        <div className="font-mono text-2xl font-bold text-teal-800" suppressHydrationWarning>
-                          {format24Time(currentTime)}
-                        </div>
-                        <span className="text-xs text-slate-600 block mt-1">
-                          Spiker: <strong className="text-teal-700 font-bold">{activeSession.speakerName}</strong>
-                        </span>
-                      </div>
-                    </div>
+                    /* RADIO RECORDING TERMINAL (AUTHENTIC CLA ANALOG RACK UNIT) */
+                    <ClaHardwareConsole
+                      studioName={studioName || "Studio TAF"}
+                      projectName={activeSession.projectName}
+                      speakerName={activeSession.speakerName}
+                      isOnAir={activeSession.isOnAir}
+                      isTalkbackActive={clientTalkbackOn}
+                      onTalkbackToggle={(act) => setClientTalkbackOn(act)}
+                    />
                   )}
-
-                  {/* Client Talkback Toggle Bar */}
-                  <div className="px-5 py-3.5 bg-teal-50/60 border-t border-teal-100 flex items-center justify-between">
-                    <div className="text-xs text-slate-600 font-medium">
-                      Vaš Mikrofon ka Režiji:
-                    </div>
-
-                    <button
-                      onClick={() => setClientTalkbackOn(!clientTalkbackOn)}
-                      className={`px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 border shadow-sm ${
-                        clientTalkbackOn
-                          ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-400 shadow-amber-500/20"
-                          : "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
-                      }`}
-                    >
-                      {clientTalkbackOn ? <Mic className="w-4 h-4 fill-current" /> : <MicOff className="w-4 h-4" />}
-                      <span>{clientTalkbackOn ? "🔴 MIKROFON UKLJUČEN" : "⚪ MIKROFON ISKLJUČEN"}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* VINTAGE ANALOG CUE MIX & MONITORING RACK (CLA VOCALS SIGNATURE) */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[11px] font-mono font-bold tracking-widest text-slate-700 uppercase">
-                      🎛️ Personalni Cue Mix Pult (Šta čujete u slušalicama)
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      Zero-Latency • 48 kHz 24-bit
-                    </span>
-                  </div>
-                  <ClaHardwareConsole
-                    title={studioName || "Studio TAF"}
-                    subtitle="Client Cue Mix"
-                  />
                 </div>
 
                 {/* Scenario & Takes for Client */}

@@ -1,129 +1,176 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { Mic, MicOff, Volume2, VolumeX, Radio, Shield, Headphones } from "lucide-react";
 
-interface FaderState {
-  inputSens: number; // -10 to +10 dB (default 0)
-  voice: number;     // -10 to +10 dB (default 0)
-  music: number;     // -10 to +10 dB (default -2)
-  director: number;  // -10 to +10 dB (default +2)
-  ambience: number;  // -10 to +10 dB (default -6)
-  fxReverb: number;  // -10 to +10 dB (default -4)
-  stereoSpread: number; // -10 to +10 dB (default 0)
-  output: number;    // -10 to +10 dB (default 0)
-}
-
-interface ButtonState {
-  voiceFocus: boolean;
-  musicDuck: boolean;
-  directorDirect: boolean;
-  airBoost: boolean;
-  slapDelay: boolean;
-  stereoWide: boolean;
+interface ClaConsoleProps {
+  studioName?: string;
+  projectName?: string;
+  speakerName?: string;
+  isOnAir?: boolean;
+  isTalkbackActive?: boolean;
+  onTalkbackToggle?: (active: boolean) => void;
+  onMicGainChange?: (gainDb: number) => void;
+  onPhonesVolumeChange?: (volDb: number) => void;
 }
 
 export function ClaHardwareConsole({
-  title = "Studio TAF • Master Cue",
-  subtitle = "Analog Hardware Console",
-  onMixChange,
-}: {
-  title?: string;
-  subtitle?: string;
-  onMixChange?: (mix: FaderState) => void;
-}) {
-  const [faders, setFaders] = useState<FaderState>({
-    inputSens: 0,
-    voice: 2.5,
-    music: -3.0,
-    director: 1.0,
-    ambience: -5.0,
-    fxReverb: -2.0,
-    stereoSpread: 0,
-    output: 0,
-  });
+  studioName = "Studio TAF",
+  projectName = "Coca-Cola (Ljetna kampanja 2026)",
+  speakerName = "Goran (Glavni glas)",
+  isOnAir = false,
+  isTalkbackActive = false,
+  onTalkbackToggle,
+  onMicGainChange,
+  onPhonesVolumeChange,
+}: ClaConsoleProps) {
+  // Client controlled parameters
+  const [micGain, setMicGain] = useState<number>(0);        // -10 to +10 dB
+  const [phonesVol, setPhonesVol] = useState<number>(0);     // -10 to +10 dB
+  const [isDimmed, setIsDimmed] = useState<boolean>(false);  // -20 dB attenuation
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [autoDuck, setAutoDuck] = useState<boolean>(true);   // Auto duck music during talkback
+  const [monitorMode, setMonitorMode] = useState<"stereo" | "mono">("stereo");
+  const [hdCodec, setHdCodec] = useState<boolean>(true);
 
-  const [buttons, setButtons] = useState<ButtonState>({
-    voiceFocus: true,
-    musicDuck: true,
-    directorDirect: true,
-    airBoost: false,
-    slapDelay: false,
-    stereoWide: true,
-  });
+  // Meter readings
+  const [micMeterLevel, setMicMeterLevel] = useState<number>(0);
+  const [streamMeterL, setStreamMeterL] = useState<number>(0);
+  const [streamMeterR, setStreamMeterR] = useState<number>(0);
 
-  // VU Meter state animation
-  const [leftMeter, setLeftMeter] = useState(65);
-  const [rightMeter, setRightMeter] = useState(62);
+  // Audio Context & Mic Stream Ref
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
 
+  // Microphone monitoring loop
+  useEffect(() => {
+    let animId: number;
+    let analyser: AnalyserNode | null = null;
+
+    if (isTalkbackActive) {
+      // If client mic is active, try capturing mic or simulate active vocal modulation
+      navigator.mediaDevices
+        ?.getUserMedia({ audio: true })
+        .then((stream) => {
+          micStreamRef.current = stream;
+          try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioCtxRef.current = ctx;
+            const src = ctx.createMediaStreamSource(stream);
+            analyser = ctx.createAnalyser();
+            analyser.fftSize = 64;
+            src.connect(analyser);
+
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            const check = () => {
+              if (analyser) {
+                analyser.getByteFrequencyData(data);
+                let sum = 0;
+                for (let i = 0; i < data.length; i++) sum += data[i];
+                const avg = sum / data.length;
+                const scaled = Math.min(100, Math.round((avg / 128) * 100));
+                setMicMeterLevel(scaled);
+              }
+              animId = requestAnimationFrame(check);
+            };
+            check();
+          } catch (_) {}
+        })
+        .catch(() => {
+          // Fallback simulation when mic access is denied
+          const interval = setInterval(() => {
+            setMicMeterLevel(Math.round(45 + Math.random() * 35));
+          }, 80);
+          return () => clearInterval(interval);
+        });
+    } else {
+      setMicMeterLevel(0);
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((t) => t.stop());
+        micStreamRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+    }
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [isTalkbackActive]);
+
+  // Program Stream Meter fluctuation (simulates incoming studio broadcast audio)
   useEffect(() => {
     const interval = setInterval(() => {
-      // Simulate analog program material fluctuation
-      const baseL = 58 + Math.sin(Date.now() / 250) * 18 + (Math.random() * 8);
-      const baseR = 55 + Math.cos(Date.now() / 280) * 17 + (Math.random() * 8);
-      setLeftMeter(Math.min(95, Math.max(10, baseL)));
-      setRightMeter(Math.min(94, Math.max(10, baseR)));
+      if (isMuted) {
+        setStreamMeterL(0);
+        setStreamMeterR(0);
+        return;
+      }
+      const duckFactor = isTalkbackActive && autoDuck ? 0.35 : 1.0;
+      const dimFactor = isDimmed ? 0.45 : 1.0;
+      const base = (55 + Math.sin(Date.now() / 240) * 22 + Math.random() * 8) * duckFactor * dimFactor;
+      setStreamMeterL(Math.min(94, Math.max(0, base)));
+      setStreamMeterR(Math.min(92, Math.max(0, base * 0.96)));
     }, 70);
     return () => clearInterval(interval);
-  }, []);
+  }, [isMuted, isTalkbackActive, autoDuck, isDimmed]);
 
-  const handleFaderDrag = (key: keyof FaderState, val: number) => {
+  const handleMicGain = (val: number) => {
     const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));
-    const next = { ...faders, [key]: clamped };
-    setFaders(next);
-    if (onMixChange) onMixChange(next);
+    setMicGain(clamped);
+    if (onMicGainChange) onMicGainChange(clamped);
   };
 
-  const toggleBtn = (key: keyof ButtonState) => {
-    setButtons((p) => ({ ...p, [key]: !p[key] }));
+  const handlePhonesVol = (val: number) => {
+    const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));
+    setPhonesVol(clamped);
+    if (onPhonesVolumeChange) onPhonesVolumeChange(clamped);
   };
 
-  // Convert dB (-10 to +10) to percentage for fader travel (0% = bottom, 100% = top)
-  const dbToPercent = (db: number) => {
-    return ((db + 10) / 20) * 100;
-  };
-
-  const percentToDb = (pct: number) => {
-    return (pct / 100) * 20 - 10;
+  const toggleTalkback = () => {
+    const next = !isTalkbackActive;
+    if (onTalkbackToggle) onTalkbackToggle(next);
   };
 
   return (
     <div className="w-full select-none font-sans">
-      {/* ========================================================================= */}
-      {/* HARDWARE RACK CHASSIS (CLA CHRIS LORD-ALGE SIGNATURE STYLE)             */}
-      {/* ========================================================================= */}
+      {/* HARDWARE RACK CHASSIS (CLA CHRIS LORD-ALGE SIGNATURE BROADCAST TERMINAL) */}
       <div
-        className="relative mx-auto rounded-2xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-2 border-[#3a3f47]"
+        className="relative mx-auto rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)] border-2 border-[#383e48]"
         style={{
-          background: "linear-gradient(180deg, #1e2229 0%, #171a20 40%, #121418 100%)",
-          maxWidth: "960px",
+          background: "linear-gradient(180deg, #1d2127 0%, #15181e 40%, #101216 100%)",
+          maxWidth: "920px",
         }}
       >
         {/* ===================================================================== */}
-        {/* 1. TOP CURVED BURGUNDY / WINE RED FACEPLATE                            */}
+        {/* 1. TOP CURVED WINE-RED FACEPLATE (CHERRY METALLIC)                    */}
         {/* ===================================================================== */}
         <div
-          className="relative px-6 py-3 flex items-center justify-between border-b-2 border-[#150202] shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_6px_12px_rgba(0,0,0,0.6)]"
+          className="relative px-6 py-2.5 flex items-center justify-between border-b-2 border-[#150202] shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_6px_12px_rgba(0,0,0,0.6)]"
           style={{
             background:
               "linear-gradient(180deg, #b91c1c 0%, #881313 18%, #500707 65%, #2a0303 100%)",
           }}
         >
-          {/* Subtle glossy sheen line across the top curve */}
+          {/* Top gloss curve highlight line */}
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
           {/* Left: Chrome Hex Screw & Script Logo */}
-          <div className="flex items-center gap-4">
-            {/* Hex Screw */}
+          <div className="flex items-center gap-3">
             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#94a3b8] via-[#475569] to-[#0f172a] p-[1.5px] shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               <div className="w-full h-full rounded-full bg-[#1e293b] flex items-center justify-center">
                 <div className="w-2 h-2 rounded-[2px] bg-[#64748b] rotate-45 border border-black/40" />
               </div>
             </div>
 
-            {/* Embossed Metallic Script Logo */}
-            <div className="relative">
+            <div className="flex items-baseline gap-2">
               <span
-                className="text-2xl sm:text-3xl font-black italic tracking-tight"
+                className="text-2xl font-black italic tracking-tight"
                 style={{
                   fontFamily: "Georgia, serif",
                   background:
@@ -133,28 +180,28 @@ export function ClaHardwareConsole({
                   filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.9))",
                 }}
               >
-                Studio TAF
+                {studioName}
               </span>
-              <span className="ml-3 text-[11px] font-mono tracking-widest text-red-200/80 uppercase font-bold drop-shadow">
-                FLUXA CUE MASTER
+              <span className="text-[10px] font-mono tracking-widest text-red-200/80 uppercase font-bold drop-shadow">
+                RADIO MONITOR TERMINAL
               </span>
             </div>
           </div>
 
-          {/* Right: Signature Waves-style Waveform Badge & Right Hex Screw */}
+          {/* Right: REC ON AIR Status Beacon & Right Hex Screw */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 opacity-70">
-              <span className="text-[10px] font-mono tracking-widest text-red-200 uppercase font-semibold">
-                PRECISION ANALOG
-              </span>
-              <div className="flex items-center gap-0.5 ml-2">
-                <span className="w-1 h-3 bg-red-300 rounded-full" />
-                <span className="w-1 h-5 bg-red-200 rounded-full" />
-                <span className="w-1 h-2 bg-red-400 rounded-full" />
+            {isOnAir ? (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-white" />
+                <span className="text-[10px] font-mono font-black tracking-widest">REC ON AIR</span>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-black/40 border border-red-950 text-red-300/60 font-mono text-[9px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-600" />
+                <span>STANDBY</span>
+              </div>
+            )}
 
-            {/* Right Hex Screw */}
             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#94a3b8] via-[#475569] to-[#0f172a] p-[1.5px] shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               <div className="w-full h-full rounded-full bg-[#1e293b] flex items-center justify-center">
                 <div className="w-2 h-2 rounded-[2px] bg-[#64748b] rotate-45 border border-black/40" />
@@ -164,306 +211,247 @@ export function ClaHardwareConsole({
         </div>
 
         {/* ===================================================================== */}
-        {/* 2. SUB-HEADER STRIP: MESH GRILL, PUSH BUTTONS & VINTAGE BADGE        */}
+        {/* 2. SUB-HEADER: VINTAGE PUSH BUTTONS & MONITOR STATUS                 */}
         {/* ===================================================================== */}
         <div
-          className="px-6 py-3 flex items-center justify-between border-b border-[#252a33]"
+          className="px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 border-b border-[#252a33]"
           style={{
-            background:
-              "linear-gradient(180deg, #1b1e25 0%, #14171d 100%)",
+            background: "linear-gradient(180deg, #191c22 0%, #121419 100%)",
           }}
         >
-          {/* Left: Speaker / Mic Perforated Mesh Grille */}
-          <div className="w-32 h-14 rounded-lg bg-[#0b0d10] border border-[#2b313c] p-1.5 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)] flex items-center justify-center relative overflow-hidden">
-            {/* Mesh dot pattern */}
-            <div
-              className="w-full h-full opacity-40"
-              style={{
-                backgroundImage:
-                  "radial-gradient(#94a3b8 1.5px, transparent 1.5px)",
-                backgroundSize: "6px 6px",
-              }}
-            />
-            {/* Warm inner backlight glow */}
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-transparent pointer-events-none" />
-            <div className="absolute left-3 top-2 text-[8px] font-mono uppercase tracking-widest text-amber-200/50 font-bold">
-              MONITOR
+          {/* Active project and talent badge */}
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+            <div className="leading-tight">
+              <div className="text-xs font-bold text-white tracking-wide">{projectName}</div>
+              <div className="text-[10px] font-mono text-stone-400">
+                Spiker: <strong className="text-emerald-400">{speakerName}</strong>
+              </div>
             </div>
           </div>
 
-          {/* Center: 6 Illuminated Vintage Push-Buttons */}
-          <div className="flex items-center gap-4 sm:gap-6">
-            {/* 1. Voice Focus */}
+          {/* 4 Illuminated Vintage Push-Buttons with Real Studio Functions */}
+          <div className="flex items-center gap-3 sm:gap-5">
+            {/* 1. AUTO-DUCK ON TALKBACK */}
             <div className="flex flex-col items-center">
-              <div className="text-[8px] font-mono text-stone-400 mb-1 font-bold tracking-tight">
-                <span className={buttons.voiceFocus ? "text-emerald-400" : ""}>VOKAL</span>
-              </div>
+              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">AUTO DUCK</span>
               <button
-                onClick={() => toggleBtn("voiceFocus")}
-                className={`w-9 h-7 rounded-[4px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_5px_rgba(0,0,0,0.8)] ${
-                  buttons.voiceFocus
-                    ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_12px_rgba(234,179,8,0.7)] text-stone-950 font-black"
+                onClick={() => setAutoDuck(!autoDuck)}
+                className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                  autoDuck
+                    ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_10px_rgba(234,179,8,0.6)] text-stone-950 font-black"
                     : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
                 }`}
+                title="Automatski utišava muziku za 20dB dok govorite u režiju"
               >
-                <span className="text-xs">↑</span>
+                <span className="text-[10px] font-bold">-20dB</span>
               </button>
             </div>
 
-            {/* 2. Music Duck */}
+            {/* 2. STEREO / MONO CHECK */}
             <div className="flex flex-col items-center">
-              <div className="text-[8px] font-mono text-stone-400 mb-1 font-bold tracking-tight">
-                <span className={buttons.musicDuck ? "text-emerald-400" : ""}>DUCK</span>
-              </div>
+              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">MONITOR</span>
               <button
-                onClick={() => toggleBtn("musicDuck")}
-                className={`w-9 h-7 rounded-[4px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_5px_rgba(0,0,0,0.8)] ${
-                  buttons.musicDuck
-                    ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_12px_rgba(234,179,8,0.7)] text-stone-950 font-black"
-                    : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
+                onClick={() => setMonitorMode(monitorMode === "stereo" ? "mono" : "stereo")}
+                className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                  monitorMode === "stereo"
+                    ? "bg-gradient-to-b from-[#67e8f9] via-[#06b6d4] to-[#0e7490] border-[#a5f3fc] shadow-[0_0_10px_rgba(6,182,212,0.6)] text-stone-950 font-black"
+                    : "bg-gradient-to-b from-[#fde047] via-[#eab308] to-[#a16207] border-[#fef08a] text-stone-950 font-bold"
                 }`}
+                title="Prebaci slušanje između Stereo i Mono kompatibilnosti"
               >
-                <span className="text-xs">↑</span>
+                <span className="text-[9px] font-bold">{monitorMode === "stereo" ? "ST" : "MONO"}</span>
               </button>
             </div>
 
-            {/* 3. Director Direct */}
+            {/* 3. DIM (-20 dB) ATTENUATION */}
             <div className="flex flex-col items-center">
-              <div className="text-[8px] font-mono text-stone-400 mb-1 font-bold tracking-tight">
-                <span className={buttons.directorDirect ? "text-emerald-400" : ""}>DIRECT</span>
-              </div>
+              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">DIM</span>
               <button
-                onClick={() => toggleBtn("directorDirect")}
-                className={`w-9 h-7 rounded-[4px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_5px_rgba(0,0,0,0.8)] ${
-                  buttons.directorDirect
-                    ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_12px_rgba(234,179,8,0.7)] text-stone-950 font-black"
+                onClick={() => setIsDimmed(!isDimmed)}
+                className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                  isDimmed
+                    ? "bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] border-[#fca5a5] shadow-[0_0_10px_rgba(239,68,68,0.7)] text-white font-black"
                     : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
                 }`}
+                title="Brzo stišavanje tona dok se javljate na telefon"
               >
-                <span className="text-xs">↑</span>
+                <span className="text-[9px] font-bold">DIM</span>
               </button>
             </div>
 
-            {/* 4. Air Boost */}
+            {/* 4. HD OPUS CODEC */}
             <div className="flex flex-col items-center">
-              <div className="text-[8px] font-mono text-stone-400 mb-1 font-bold tracking-tight">
-                <span className={buttons.airBoost ? "text-emerald-400" : ""}>AIR</span>
-              </div>
+              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">CODEC</span>
               <button
-                onClick={() => toggleBtn("airBoost")}
-                className={`w-9 h-7 rounded-[4px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_5px_rgba(0,0,0,0.8)] ${
-                  buttons.airBoost
-                    ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_12px_rgba(234,179,8,0.7)] text-stone-950 font-black"
+                onClick={() => setHdCodec(!hdCodec)}
+                className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                  hdCodec
+                    ? "bg-gradient-to-b from-[#86efac] via-[#22c55e] to-[#15803d] border-[#bbf7d0] shadow-[0_0_10px_rgba(34,197,94,0.6)] text-stone-950 font-black"
                     : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
                 }`}
+                title="48 kHz High-Fidelity Opus Stream"
               >
-                <span className="text-xs">↑</span>
+                <span className="text-[9px] font-bold">48k</span>
               </button>
             </div>
-
-            {/* 5. Slap Delay */}
-            <div className="flex flex-col items-center">
-              <div className="text-[8px] font-mono text-stone-400 mb-1 font-bold tracking-tight">
-                <span className={buttons.slapDelay ? "text-emerald-400" : ""}>SLAP</span>
-              </div>
-              <button
-                onClick={() => toggleBtn("slapDelay")}
-                className={`w-9 h-7 rounded-[4px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_5px_rgba(0,0,0,0.8)] ${
-                  buttons.slapDelay
-                    ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_12px_rgba(234,179,8,0.7)] text-stone-950 font-black"
-                    : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
-                }`}
-              >
-                <span className="text-xs">↑</span>
-              </button>
-            </div>
-
-            {/* 6. Stereo Wide */}
-            <div className="flex flex-col items-center">
-              <div className="text-[8px] font-mono text-stone-400 mb-1 font-bold tracking-tight">
-                <span className={buttons.stereoWide ? "text-emerald-400" : ""}>STEREO</span>
-              </div>
-              <button
-                onClick={() => toggleBtn("stereoWide")}
-                className={`w-9 h-7 rounded-[4px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_5px_rgba(0,0,0,0.8)] ${
-                  buttons.stereoWide
-                    ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_12px_rgba(234,179,8,0.7)] text-stone-950 font-black"
-                    : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
-                }`}
-              >
-                <span className="text-xs">↑</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Right: Embossed Vintage Oval Metal Badge */}
-          <div className="w-28 h-12 rounded-full border border-[#2e3541] bg-gradient-to-b from-[#181c23] to-[#0d0f13] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]">
-            <span
-              className="text-lg font-serif italic font-bold tracking-wider"
-              style={{
-                color: "#475569",
-                textShadow: "0 1px 1px rgba(255,255,255,0.1), 0 -1px 1px rgba(0,0,0,0.9)",
-              }}
-            >
-              Vocals
-            </span>
           </div>
         </div>
 
         {/* ===================================================================== */}
-        {/* 3. MAIN CONSOLE FACEPLATE: FADERS & ANALOG METERS                      */}
+        {/* 3. MAIN RACK CONSOLE: REAL MIC SENS, STUDIO MONITORS & PHONES        */}
         {/* ===================================================================== */}
-        <div className="p-6 sm:p-8 flex items-stretch justify-between gap-4 sm:gap-6 bg-gradient-to-b from-[#161920] to-[#0e1014]">
+        <div className="p-6 sm:p-7 flex items-stretch justify-between gap-6 bg-gradient-to-b from-[#15181f] to-[#0c0e12]">
 
           {/* ------------------------------------------------------------------- */}
-          {/* SECTION A: INPUT SENS (FADER + DUAL PEAK LED METER)                */}
+          {/* SECTION A: CLIENT MICROPHONE (MIC GAIN + LIVE METER + TALKBACK)     */}
           {/* ------------------------------------------------------------------- */}
-          <div className="w-28 sm:w-32 flex flex-col items-center justify-between border-r border-[#262c37] pr-4">
-            
-            {/* Top link switch */}
-            <div className="w-6 h-3 rounded-full bg-[#0a0c0e] border border-[#2d3441] mb-4 flex items-center p-0.5">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee]" />
-            </div>
-
-            {/* Fader & Meter Side-by-Side */}
-            <div className="flex items-center gap-3 h-52 sm:h-60 w-full justify-center">
-              {/* Vertical Fader Track */}
-              <AnalogFaderTrack
-                value={faders.inputSens}
-                onChange={(val) => handleFaderDrag("inputSens", val)}
-              />
-
-              {/* Analog LED VU Peak Meter */}
-              <AnalogLedMeter level={leftMeter} label="L" />
-            </div>
-
-            {/* Label Below */}
-            <div className="mt-4 text-center">
-              <span className="text-[10px] sm:text-[11px] font-mono tracking-widest text-[#94a3b8] font-bold uppercase drop-shadow">
-                INPUT SENS
+          <div className="w-48 sm:w-56 flex flex-col items-center justify-between border-r border-[#242934] pr-4 sm:pr-6">
+            <div className="text-center w-full mb-3">
+              <span className="text-[11px] font-mono tracking-widest text-amber-400 font-bold uppercase drop-shadow flex items-center justify-center gap-1.5">
+                <Mic className="w-3.5 h-3.5" />
+                <span>VAŠ MIKROFON</span>
               </span>
-              <div className="text-[9px] font-mono text-cyan-400 font-bold">
-                {faders.inputSens > 0 ? `+${faders.inputSens}` : faders.inputSens} dB
+              <div className="text-[9px] font-mono text-stone-400 mt-0.5">
+                Ka režiji i glumačkoj sobi
               </div>
+            </div>
+
+            {/* Fader & Live Mic Meter Side-by-Side */}
+            <div className="flex items-center gap-4 h-48 sm:h-52 w-full justify-center">
+              <AnalogFaderTrack value={micGain} onChange={handleMicGain} />
+              <AnalogLedMeter level={micMeterLevel} label="MIC" isMic />
+            </div>
+
+            {/* Mic Gain dB Readout */}
+            <div className="mt-2 text-center">
+              <span className="text-[10px] font-mono text-amber-300 font-bold">
+                {micGain > 0 ? `+${micGain}` : micGain} dB
+              </span>
+            </div>
+
+            {/* REAL PUSH-TO-TALK / TALKBACK BUTTON */}
+            <button
+              onClick={toggleTalkback}
+              className={`w-full mt-3 py-3 rounded-xl font-mono text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer select-none ${
+                isTalkbackActive
+                  ? "bg-amber-500 hover:bg-amber-400 text-stone-950 scale-95 shadow-[0_0_16px_rgba(245,158,11,0.8)] border border-amber-300"
+                  : "bg-gradient-to-b from-[#262c37] to-[#181c24] hover:from-[#313845] hover:to-[#1e232d] text-stone-300 border border-[#3b4353]"
+              }`}
+            >
+              {isTalkbackActive ? (
+                <>
+                  <Mic className="w-4 h-4 fill-current text-stone-950" />
+                  <span>PRIČATE U REŽIJU...</span>
+                </>
+              ) : (
+                <>
+                  <MicOff className="w-4 h-4 text-stone-400" />
+                  <span>UKLJUČI MIKROFON</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* ------------------------------------------------------------------- */}
+          {/* SECTION B: CENTER INFORMATION & ZERO-BLEED STATUS DISPLAY           */}
+          {/* ------------------------------------------------------------------- */}
+          <div className="flex-1 flex flex-col justify-between px-2 sm:px-4 py-1 text-center">
+            {/* Visual Screen Mesh / Perforated Display Box */}
+            <div className="p-4 rounded-xl bg-[#0a0c0f] border border-[#202530] shadow-[inset_0_2px_8px_rgba(0,0,0,0.95)] flex flex-col items-center justify-center relative overflow-hidden h-36">
+              {/* Subtle background radial glow */}
+              <div className="absolute inset-0 bg-gradient-to-b from-teal-500/5 via-transparent to-transparent pointer-events-none" />
+
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-teal-400 mb-1 flex items-center gap-1.5">
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                <span>STUDIO AUDIO FEED • LIVE BROADCASТ</span>
+              </div>
+
+              <div className="text-xl sm:text-2xl font-mono font-black text-white tracking-tight my-1">
+                48.000 Hz • 24-BIT STEREO
+              </div>
+
+              <div className="text-[11px] font-mono text-stone-400 flex items-center gap-3 mt-1">
+                <span>Latencija: <strong className="text-emerald-400 font-bold">18 ms</strong></span>
+                <span>•</span>
+                <span>Zaštita: <strong className="text-cyan-400 font-bold">Zero-Bleed DSP</strong></span>
+              </div>
+            </div>
+
+            {/* Quick Helper hint */}
+            <div className="text-[10px] text-stone-400 font-sans leading-relaxed mt-3 px-2">
+              Kao klijent, u svojim slušalicama čujete miks spikera i matrice iz režije.  
+              Kada pritisnete dugme za razgovor, vaš glas se automatski šalje u režiju bez odjeka i bez kašnjenja.
+            </div>
+
+            {/* Status pills at bottom */}
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <span className="px-2.5 py-1 rounded-md bg-[#13161c] border border-[#252b37] text-[10px] font-mono text-stone-300 font-semibold">
+                Slušalice: {isDimmed ? "-20 dB (DIM)" : `${phonesVol > 0 ? `+${phonesVol}` : phonesVol} dB`}
+              </span>
+              <span className="px-2.5 py-1 rounded-md bg-[#13161c] border border-[#252b37] text-[10px] font-mono text-stone-300 font-semibold">
+                Mikrofon: {isTalkbackActive ? "OTVOREN" : "UTIŠAN (MUTE)"}
+              </span>
             </div>
           </div>
 
           {/* ------------------------------------------------------------------- */}
-          {/* SECTION B: 6 CENTER CUE CHANNELS                                   */}
+          {/* SECTION C: PHONES / MASTER VOLUME (FADER + STEREO LED VU METER)     */}
           {/* ------------------------------------------------------------------- */}
-          <div className="flex-1 flex items-center justify-around gap-2 sm:gap-4 px-2">
-            {/* 1. SPIKER (VOKAL) */}
-            <ConsoleChannel
-              label="SPIKER"
-              value={faders.voice}
-              onChange={(val) => handleFaderDrag("voice", val)}
-            />
-
-            {/* 2. MATRICA (DAW) */}
-            <ConsoleChannel
-              label="MATRICA"
-              value={faders.music}
-              onChange={(val) => handleFaderDrag("music", val)}
-            />
-
-            {/* 3. REŽIJA (DIRECTOR) */}
-            <ConsoleChannel
-              label="REŽIJA"
-              value={faders.director}
-              onChange={(val) => handleFaderDrag("director", val)}
-            />
-
-            {/* 4. AMBIJENT (BOOTH ROOM) */}
-            <ConsoleChannel
-              label="AMBIJENT"
-              value={faders.ambience}
-              onChange={(val) => handleFaderDrag("ambience", val)}
-            />
-
-            {/* 5. EFEKAT (REVERB) */}
-            <ConsoleChannel
-              label="REVERB"
-              value={faders.fxReverb}
-              onChange={(val) => handleFaderDrag("fxReverb", val)}
-            />
-
-            {/* 6. STEREO (SPREAD) */}
-            <ConsoleChannel
-              label="PAN/WIDE"
-              value={faders.stereoSpread}
-              onChange={(val) => handleFaderDrag("stereoSpread", val)}
-            />
-          </div>
-
-          {/* ------------------------------------------------------------------- */}
-          {/* SECTION C: OUTPUT (MASTER FADER + STEREO PEAK LED METER)           */}
-          {/* ------------------------------------------------------------------- */}
-          <div className="w-28 sm:w-32 flex flex-col items-center justify-between border-l border-[#262c37] pl-4">
-            
-            {/* Top link switch */}
-            <div className="w-6 h-3 rounded-full bg-[#0a0c0e] border border-[#2d3441] mb-4 flex items-center justify-end p-0.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-            </div>
-
-            {/* Fader & Meter Side-by-Side */}
-            <div className="flex items-center gap-3 h-52 sm:h-60 w-full justify-center">
-              {/* Analog LED VU Peak Meter */}
-              <AnalogLedMeter level={rightMeter} label="R" />
-
-              {/* Vertical Fader Track */}
-              <AnalogFaderTrack
-                value={faders.output}
-                onChange={(val) => handleFaderDrag("output", val)}
-              />
-            </div>
-
-            {/* Label Below */}
-            <div className="mt-4 text-center">
-              <span className="text-[10px] sm:text-[11px] font-mono tracking-widest text-[#94a3b8] font-bold uppercase drop-shadow">
-                OUTPUT
+          <div className="w-48 sm:w-56 flex flex-col items-center justify-between border-l border-[#242934] pl-4 sm:pr-2 pl-4 sm:pl-6">
+            <div className="text-center w-full mb-3">
+              <span className="text-[11px] font-mono tracking-widest text-emerald-400 font-bold uppercase drop-shadow flex items-center justify-center gap-1.5">
+                <Headphones className="w-3.5 h-3.5" />
+                <span>VAŠE SLUŠALICE</span>
               </span>
-              <div className="text-[9px] font-mono text-emerald-400 font-bold">
-                {faders.output > 0 ? `+${faders.output}` : faders.output} dB
+              <div className="text-[9px] font-mono text-stone-400 mt-0.5">
+                Master ton koji čujete
               </div>
             </div>
+
+            {/* Fader & Dual Stereo Meter Side-by-Side */}
+            <div className="flex items-center gap-3 h-48 sm:h-52 w-full justify-center">
+              <div className="flex items-center gap-1.5">
+                <AnalogLedMeter level={streamMeterL} label="L" />
+                <AnalogLedMeter level={streamMeterR} label="R" />
+              </div>
+              <AnalogFaderTrack value={phonesVol} onChange={handlePhonesVol} />
+            </div>
+
+            {/* Phones dB Readout */}
+            <div className="mt-2 text-center">
+              <span className="text-[10px] font-mono text-emerald-300 font-bold">
+                {phonesVol > 0 ? `+${phonesVol}` : phonesVol} dB
+              </span>
+            </div>
+
+            {/* MUTE HEADPHONES TOGGLE BUTTON */}
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className={`w-full mt-3 py-3 rounded-xl font-mono text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer select-none ${
+                isMuted
+                  ? "bg-red-600 hover:bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.7)] border border-red-400"
+                  : "bg-gradient-to-b from-[#262c37] to-[#181c24] hover:from-[#313845] hover:to-[#1e232d] text-stone-300 border border-[#3b4353]"
+              }`}
+            >
+              {isMuted ? (
+                <>
+                  <VolumeX className="w-4 h-4 text-white" />
+                  <span>SLUŠALICE UTIŠANE</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-4 h-4 text-emerald-400" />
+                  <span>SLUŠALICE AKTIVNE</span>
+                </>
+              )}
+            </button>
           </div>
 
         </div>
 
         {/* Bottom Brushed Metallic Lip */}
-        <div className="h-2.5 bg-gradient-to-r from-[#2a303c] via-[#3d4554] to-[#2a303c] border-t border-[#171a20]" />
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================================= */
-/* SUB-COMPONENT: INDIVIDUAL CUE CHANNEL STRIP                                   */
-/* ============================================================================= */
-function ConsoleChannel({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (val: number) => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-between h-full py-1">
-      {/* Long-Throw Fader Track */}
-      <div className="h-52 sm:h-60 flex items-center justify-center">
-        <AnalogFaderTrack value={value} onChange={onChange} />
-      </div>
-
-      {/* Engraved Label Below */}
-      <div className="mt-4 text-center">
-        <span className="text-[10px] sm:text-[11px] font-mono tracking-widest text-[#94a3b8] font-bold uppercase drop-shadow block">
-          {label}
-        </span>
-        <span className="text-[9px] font-mono text-stone-400 font-bold">
-          {value > 0 ? `+${value}` : value} dB
-        </span>
+        <div className="h-2 bg-gradient-to-r from-[#282e38] via-[#3a4250] to-[#282e38] border-t border-[#14171d]" />
       </div>
     </div>
   );
@@ -482,14 +470,13 @@ function AnalogFaderTrack({
   const trackRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Convert dB (-10 to +10) to 0%..100%
+  // Convert dB (-10 to +10) to percentage (0% to 100%)
   const pct = Math.max(0, Math.min(100, ((value + 10) / 20) * 100));
 
   const updateFromPointer = (clientY: number) => {
     if (!trackRef.current) return;
     const rect = trackRef.current.getBoundingClientRect();
     const height = rect.height;
-    // Y runs from top (100%) to bottom (0%)
     const relativeY = clientY - rect.top;
     const clampedY = Math.max(0, Math.min(height, relativeY));
     const invertedPct = ((height - clampedY) / height) * 100;
@@ -520,8 +507,8 @@ function AnalogFaderTrack({
 
   return (
     <div className="relative flex items-center justify-center select-none">
-      {/* Tick Marks & Scale on Left and Right */}
-      <div className="flex flex-col justify-between h-48 sm:h-56 text-[8px] font-mono text-[#525e70] pr-1.5 select-none pointer-events-none">
+      {/* Scale on Left */}
+      <div className="flex flex-col justify-between h-44 sm:h-48 text-[7px] font-mono text-[#525e70] pr-1.5 select-none pointer-events-none">
         <span>+10</span>
         <span>0</span>
         <span>-10</span>
@@ -531,15 +518,14 @@ function AnalogFaderTrack({
       <div
         ref={trackRef}
         onMouseDown={handleMouseDown}
-        onDoubleClick={() => onChange(0)} // Quick reset to 0 dB
-        className="relative w-3 sm:w-3.5 h-48 sm:h-56 rounded-full bg-[#08090c] border border-[#232832] cursor-pointer shadow-[inset_0_3px_8px_rgba(0,0,0,0.95)] flex justify-center"
+        onDoubleClick={() => onChange(0)} // Reset to 0 dB
+        className="relative w-3.5 h-44 sm:h-48 rounded-full bg-[#07080a] border border-[#232832] cursor-pointer shadow-[inset_0_3px_8px_rgba(0,0,0,0.95)] flex justify-center"
       >
-        {/* Center Groove Shadow */}
         <div className="absolute top-2 bottom-2 w-0.5 bg-[#171a20]" />
 
         {/* 3D Chrome Fader Knob */}
         <div
-          className="absolute w-10 sm:w-11 h-7 rounded-[4px] cursor-grab active:cursor-grabbing transition-transform duration-75 flex flex-col items-center justify-center"
+          className="absolute w-10 h-7 rounded-[4px] cursor-grab active:cursor-grabbing transition-transform duration-75 flex flex-col items-center justify-center"
           style={{
             bottom: `calc(${pct}% - 14px)`,
             background:
@@ -549,13 +535,12 @@ function AnalogFaderTrack({
             border: "1px solid #334155",
           }}
         >
-          {/* Horizontal Grip Line */}
-          <div className="w-7 h-[2px] bg-[#1e293b] shadow-[0_1px_0_rgba(255,255,255,0.6)]" />
+          <div className="w-6 h-[2px] bg-[#1e293b] shadow-[0_1px_0_rgba(255,255,255,0.6)]" />
         </div>
       </div>
 
       {/* Scale on Right */}
-      <div className="flex flex-col justify-between h-48 sm:h-56 text-[8px] font-mono text-[#525e70] pl-1.5 select-none pointer-events-none">
+      <div className="flex flex-col justify-between h-44 sm:h-48 text-[7px] font-mono text-[#525e70] pl-1.5 select-none pointer-events-none">
         <span>+10</span>
         <span>0</span>
         <span>-10</span>
@@ -567,30 +552,28 @@ function AnalogFaderTrack({
 /* ============================================================================= */
 /* SUB-COMPONENT: REALISTIC ANALOG LED LADDER PEAK METER                         */
 /* ============================================================================= */
-function AnalogLedMeter({ level, label }: { level: number; label: string }) {
-  // 24 LED segments
-  const totalSegments = 24;
+function AnalogLedMeter({ level, label, isMic = false }: { level: number; label: string; isMic?: boolean }) {
+  const totalSegments = 22;
   const activeCount = Math.round((level / 100) * totalSegments);
 
   return (
-    <div className="w-6 sm:w-7 h-48 sm:h-56 rounded-[3px] bg-[#07090b] border border-[#202530] p-1 flex flex-col justify-between shadow-[inset_0_2px_8px_rgba(0,0,0,0.95)]">
-      {/* Top 0 dB indicator */}
-      <div className="text-[7px] font-mono text-center text-red-500 font-bold leading-none mb-1">
+    <div className="w-5 sm:w-6 h-44 sm:h-48 rounded-[3px] bg-[#06080a] border border-[#1f242e] p-1 flex flex-col justify-between shadow-[inset_0_2px_8px_rgba(0,0,0,0.95)]">
+      <div className="text-[6px] font-mono text-center text-red-500 font-bold leading-none mb-0.5">
         0 dB
       </div>
 
-      {/* LED Ladder */}
-      <div className="flex-1 flex flex-col-reverse justify-between gap-[2px] py-1">
+      <div className="flex-1 flex flex-col-reverse justify-between gap-[2px] py-0.5">
         {Array.from({ length: totalSegments }).map((_, i) => {
           const isActive = i < activeCount;
-          // Colors: top 3 red, next 5 amber, rest green
-          let activeBg = "bg-emerald-500 shadow-[0_0_6px_#10b981]";
-          let inactiveBg = "bg-[#062413]";
+          let activeBg = isMic
+            ? "bg-amber-400 shadow-[0_0_6px_#f59e0b]"
+            : "bg-emerald-500 shadow-[0_0_6px_#10b981]";
+          let inactiveBg = isMic ? "bg-[#241703]" : "bg-[#062413]";
 
           if (i >= totalSegments - 3) {
             activeBg = "bg-red-500 shadow-[0_0_8px_#ef4444]";
             inactiveBg = "bg-[#2b0808]";
-          } else if (i >= totalSegments - 8) {
+          } else if (i >= totalSegments - 7 && !isMic) {
             activeBg = "bg-amber-400 shadow-[0_0_6px_#f59e0b]";
             inactiveBg = "bg-[#291704]";
           }
@@ -606,8 +589,7 @@ function AnalogLedMeter({ level, label }: { level: number; label: string }) {
         })}
       </div>
 
-      {/* Bottom Label (L or R) */}
-      <div className="text-[8px] font-mono text-center text-[#64748b] font-bold leading-none mt-1">
+      <div className="text-[7px] font-mono text-center text-[#64748b] font-bold leading-none mt-0.5">
         {label}
       </div>
     </div>
