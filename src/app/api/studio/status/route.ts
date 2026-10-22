@@ -38,6 +38,13 @@ let bridgeStatus = {
   ip: "127.0.0.1",
 };
 
+// Independent talkback state tracking per role
+let roleTalkbacks = {
+  agency_tenant: false,
+  guest_participant: false,
+  studio_director: false,
+};
+
 let sessionsList: SessionItem[] = [
   {
     id: "taf-coca-cola-2026",
@@ -124,12 +131,25 @@ export async function GET() {
     activeSessionId,
     activeSession,
     sessions: sessionsList,
+    roleTalkbacks,
   });
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+
+    // Role-specific Talkback toggle
+    if (body.action === "SET_TALKBACK" && body.role) {
+      if (body.role === "agency_tenant") {
+        roleTalkbacks.agency_tenant = Boolean(body.active);
+      } else if (body.role === "guest_participant") {
+        roleTalkbacks.guest_participant = Boolean(body.active);
+      } else if (body.role === "studio_director") {
+        roleTalkbacks.studio_director = Boolean(body.active);
+      }
+      return NextResponse.json({ success: true, roleTalkbacks });
+    }
 
     // Heartbeat from StudioBridge
     if (body.type === "HEARTBEAT" || typeof body.isOnline === "boolean") {

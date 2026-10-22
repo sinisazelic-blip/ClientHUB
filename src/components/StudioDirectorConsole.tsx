@@ -70,6 +70,9 @@ export default function StudioDirectorConsole({
   // Live Clock
   const [clockTime, setClockTime] = useState(new Date());
 
+  // Remote role talkback states
+  const [roleTalkbacks, setRoleTalkbacks] = useState<{ agency_tenant?: boolean; guest_participant?: boolean }>({});
+
   const wsRef = useRef<WebSocket | null>(null);
 
   // WebSocket connect to StudioBridge for real hardware meters and controls
@@ -120,14 +123,26 @@ export default function StudioDirectorConsole({
     };
   }, []);
 
-  // Timer loop when ON AIR is active
+  // Timer loop when ON AIR is active and status polling
   useEffect(() => {
+    const fetchTalkbacks = async () => {
+      try {
+        const res = await fetch("/api/studio/status");
+        const data = await res.json();
+        if (data.roleTalkbacks) {
+          setRoleTalkbacks(data.roleTalkbacks);
+        }
+      } catch (_) {}
+    };
+
+    fetchTalkbacks();
     const timer = setInterval(() => {
       setClockTime(new Date());
+      fetchTalkbacks();
       if (isOnAir) {
         setRecElapsedSeconds((prev) => prev + 1);
       }
-    }, 1000);
+    }, 1500);
     return () => clearInterval(timer);
   }, [isOnAir]);
 
@@ -399,8 +414,23 @@ export default function StudioDirectorConsole({
 
             {/* Talkback Toggle */}
             <div className="mt-4 pt-4 border-t border-teal-100 flex items-center justify-between">
-              <div className="text-xs text-slate-600">
-                Komunikacija: <strong className="text-slate-800">Režija ⇄ Glumačka soba ⇄ Klijenti</strong>
+              <div className="text-xs text-slate-600 flex items-center gap-2">
+                <span>Komunikacija:</span>
+                {roleTalkbacks.agency_tenant && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-purple-100 border border-purple-300 text-purple-900 font-bold text-[10px] animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                    <span>Naručilac priča</span>
+                  </span>
+                )}
+                {roleTalkbacks.guest_participant && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-teal-100 border border-teal-300 text-teal-900 font-bold text-[10px] animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                    <span>Klijent priča</span>
+                  </span>
+                )}
+                {!roleTalkbacks.agency_tenant && !roleTalkbacks.guest_participant && (
+                  <strong className="text-slate-800">Režija ⇄ Glumačka soba ⇄ Klijenti</strong>
+                )}
               </div>
 
               <button

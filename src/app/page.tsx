@@ -36,12 +36,24 @@ export default function ClientHubPage() {
   const [guestTalkbackOn, setGuestTalkbackOn] = useState<boolean>(false);
 
   const isCurrentTalkbackOn = currentRole === "agency_tenant" ? agencyTalkbackOn : guestTalkbackOn;
-  const handleCurrentTalkbackToggle = (active: boolean) => {
+  const handleCurrentTalkbackToggle = async (active: boolean) => {
     if (currentRole === "agency_tenant") {
       setAgencyTalkbackOn(active);
-    } else {
+    } else if (currentRole === "guest_participant") {
       setGuestTalkbackOn(active);
     }
+
+    try {
+      await fetch("/api/studio/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "SET_TALKBACK",
+          role: currentRole,
+          active,
+        }),
+      });
+    } catch (_) {}
   };
 
   // Active Segment for Client View
@@ -77,6 +89,15 @@ export default function ClientHubPage() {
           setIsInStudio(true);
         } else if (!data.activeSession?.isDoorOpen && currentRole !== "studio_director") {
           setIsInStudio(false);
+        }
+
+        if (data.roleTalkbacks) {
+          if (currentRole !== "agency_tenant" && typeof data.roleTalkbacks.agency_tenant === "boolean") {
+            setAgencyTalkbackOn(data.roleTalkbacks.agency_tenant);
+          }
+          if (currentRole !== "guest_participant" && typeof data.roleTalkbacks.guest_participant === "boolean") {
+            setGuestTalkbackOn(data.roleTalkbacks.guest_participant);
+          }
         }
       }
     } catch (_) {}

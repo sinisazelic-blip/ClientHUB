@@ -12,6 +12,8 @@ interface ClaConsoleProps {
   onTalkbackToggle?: (active: boolean) => void;
   onMicGainChange?: (gainDb: number) => void;
   onPhonesVolumeChange?: (volDb: number) => void;
+  externalStreamMeterL?: number;
+  externalStreamMeterR?: number;
 }
 
 export function ClaHardwareConsole({
@@ -23,6 +25,8 @@ export function ClaHardwareConsole({
   onTalkbackToggle,
   onMicGainChange,
   onPhonesVolumeChange,
+  externalStreamMeterL,
+  externalStreamMeterR,
 }: ClaConsoleProps) {
   // Client controlled parameters
   const [micGain, setMicGain] = useState<number>(0);        // -10 to +10 dB
@@ -35,90 +39,89 @@ export function ClaHardwareConsole({
 
   // Meter readings
   const [micMeterLevel, setMicMeterLevel] = useState<number>(0);
+  const [rawStreamL, setRawStreamL] = useState<number>(0);
+  const [rawStreamR, setRawStreamR] = useState<number>(0);
   const [streamMeterL, setStreamMeterL] = useState<number>(0);
   const [streamMeterR, setStreamMeterR] = useState<number>(0);
 
   // Audio Context & Mic Stream Ref
   const audioCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Microphone monitoring loop
+  // Live WebSocket metering from StudioBridge (zero fake math, pure live studio feed)
   useEffect(() => {
-    let animId: number;
-    let analyser: AnalyserNode | null = null;
+    let ws: WebSocket | null = null;
+    try {
+      const host = window.location.hostname || "127.0.0.1";
+      ws = new WebSocket(`ws://${host}:4040/ws`);
+      wsRef.current = ws;
 
-    if (isTalkbackActive) {
-      // If client mic is active, try capturing mic or simulate active vocal modulation
-      navigator.mediaDevices
-        ?.getUserMedia({ audio: true })
-        .then((stream) => {
-          micStreamRef.current = stream;
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            audioCtxRef.current = ctx;
-            const src = ctx.createMediaStreamSource(stream);
-            analyser = ctx.createAnalyser();
-            analyser.fftSize = 64;
-            src.connect(analyser);
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "METERS_TICK" && Array.isArray(msg.outputs)) {
+            // Bus Out 1/2 or Out 7/8 (Main Studio / DAW Program stream)
+            const outL = msg.outputs.find((o: any) => o.id === 1 || o.id === 7);
+            const outR = msg.outputs.find((o: any) => o.id === 2 || o.id === 8);
+            setRawStreamL(outL && typeof outL.level === "number" ? outL.level : 0);
+            setRawStreamR(outR && typeof outR.level === "number" ? outR.level : 0);
+          }
+        } catch (_) {}
+      };
 
-            const data = new Uint8Array(analyser.frequencyBinCount);
-            const check = () => {
-              if (analyser) {
-                analyser.getByteFrequencyData(data);
-                let sum = 0;
-                for (let i = 0; i < data.length; i++) sum += data[i];
-                const avg = sum / data.length;
-                const scaled = Math.min(100, Math.round((avg / 128) * 100));
-                setMicMeterLevel(scaled);
-              }
-              animId = requestAnimationFrame(check);
-            };
-            check();
-          } catch (_) {}
-        })
-        .catch(() => {
-          // Fallback simulation when mic access is denied
-          const interval = setInterval(() => {
-            setMicMeterLevel(Math.round(45 + Math.random() * 35));
-          }, 80);
-          return () => clearInterval(interval);
-        });
-    } else {
-      setMicMeterLevel(0);
-      if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach((t) => t.stop());
-        micStreamRef.current = null;
-      }
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close().catch(() => {});
-        audioCtxRef.current = null;
-      }
+      ws.onclose = () => {
+        setRawStreamL(0);
+        setRawStreamR(0);
+      };
+      ws.onerror = () => {
+        setRawStreamL(0);
+        setRawStreamR(0);
+      };
+    } catch (_) {
+      setRawStreamL(0);
+      setRawStreamR(0);
     }
 
     return () => {
-      if (animId) cancelAnimationFrame(animId);
-      if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
+      if (ws) ws.close();
+      wsRef.current = null;
     };
-  }, [isTalkbackActive]);
+  }, []);
 
-  // Program Stream Meter fluctuation (simulates incoming studio broadcast audio)
+  // Compute actual attenuated/ducked VU levels from REAL incoming sound
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isMuted) {
-        setStreamMeterL(0);
-        setStreamMeterR(0);
-        return;
-      }
-      const duckFactor = isTalkbackActive && autoDuck ? 0.35 : 1.0;
-      const dimFactor = isDimmed ? 0.45 : 1.0;
-      const base = (55 + Math.sin(Date.now() / 240) * 22 + Math.random() * 8) * duckFactor * dimFactor;
-      setStreamMeterL(Math.min(94, Math.max(0, base)));
-      setStreamMeterR(Math.min(92, Math.max(0, base * 0.96)));
-    }, 70);
-    return () => clearInterval(interval);
-  }, [isMuted, isTalkbackActive, autoDuck, isDimmed]);
+    if (isMuted) {
+      setStreamMeterL(0);
+      setStreamMeterR(0);
+      return;
+    }
+
+    const baseL = externalStreamMeterL !== undefined ? externalStreamMeterL : rawStreamL;
+    const baseR = externalStreamMeterR !== undefined ? externalStreamMeterR : rawStreamR;
+
+    if (baseL <= 0 && baseR <= 0) {
+      setStreamMeterL(0);
+      setStreamMeterR(0);
+      return;
+    }
+
+    const volMultiplier = Math.pow(10, phonesVol / 20);
+    const duckFactor = isTalkbackActive && autoDuck ? 0.35 : 1.0;
+    const dimFactor = isDimmed ? 0.20 : 1.0; // -20 dB
+
+    const finalL = Math.min(100, Math.max(0, Math.round(baseL * volMultiplier * duckFactor * dimFactor)));
+    const finalR = Math.min(100, Math.max(0, Math.round(baseR * volMultiplier * duckFactor * dimFactor)));
+
+    if (monitorMode === "mono") {
+      const monoAvg = Math.round((finalL + finalR) / 2);
+      setStreamMeterL(monoAvg);
+      setStreamMeterR(monoAvg);
+    } else {
+      setStreamMeterL(finalL);
+      setStreamMeterR(finalR);
+    }
+  }, [rawStreamL, rawStreamR, externalStreamMeterL, externalStreamMeterR, isMuted, isTalkbackActive, autoDuck, isDimmed, phonesVol, monitorMode]);
 
   const handleMicGain = (val: number) => {
     const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));
