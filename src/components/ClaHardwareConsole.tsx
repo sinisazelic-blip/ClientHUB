@@ -10,8 +10,21 @@ interface ClaConsoleProps {
   isOnAir?: boolean;
   isTalkbackActive?: boolean;
   onTalkbackToggle?: (active: boolean) => void;
+  // Role-isolated parameters
+  micGain?: number;
   onMicGainChange?: (gainDb: number) => void;
+  phonesVol?: number;
   onPhonesVolumeChange?: (volDb: number) => void;
+  isMuted?: boolean;
+  onMuteToggle?: (muted: boolean) => void;
+  isDimmed?: boolean;
+  onDimToggle?: (dimmed: boolean) => void;
+  autoDuck?: boolean;
+  onAutoDuckToggle?: (autoDuck: boolean) => void;
+  monitorMode?: "stereo" | "mono";
+  onMonitorModeToggle?: (mode: "stereo" | "mono") => void;
+  hdCodec?: boolean;
+  onHdCodecToggle?: (hd: boolean) => void;
   externalStreamMeterL?: number;
   externalStreamMeterR?: number;
 }
@@ -23,19 +36,39 @@ export function ClaHardwareConsole({
   isOnAir = false,
   isTalkbackActive = false,
   onTalkbackToggle,
+  micGain: propMicGain,
   onMicGainChange,
+  phonesVol: propPhonesVol,
   onPhonesVolumeChange,
+  isMuted: propIsMuted,
+  onMuteToggle,
+  isDimmed: propIsDimmed,
+  onDimToggle,
+  autoDuck: propAutoDuck,
+  onAutoDuckToggle,
+  monitorMode: propMonitorMode,
+  onMonitorModeToggle,
+  hdCodec: propHdCodec,
+  onHdCodecToggle,
   externalStreamMeterL,
   externalStreamMeterR,
 }: ClaConsoleProps) {
-  // Client controlled parameters
-  const [micGain, setMicGain] = useState<number>(0);        // -10 to +10 dB
-  const [phonesVol, setPhonesVol] = useState<number>(0);     // -10 to +10 dB
-  const [isDimmed, setIsDimmed] = useState<boolean>(false);  // -20 dB attenuation
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [autoDuck, setAutoDuck] = useState<boolean>(true);   // Auto duck music during talkback
-  const [monitorMode, setMonitorMode] = useState<"stereo" | "mono">("stereo");
-  const [hdCodec, setHdCodec] = useState<boolean>(true);
+  // Client controlled parameters (internal fallback when not controlled)
+  const [internalMicGain, setInternalMicGain] = useState<number>(0);
+  const [internalPhonesVol, setInternalPhonesVol] = useState<number>(0);
+  const [internalIsDimmed, setInternalIsDimmed] = useState<boolean>(false);
+  const [internalIsMuted, setInternalIsMuted] = useState<boolean>(false);
+  const [internalAutoDuck, setInternalAutoDuck] = useState<boolean>(true);
+  const [internalMonitorMode, setInternalMonitorMode] = useState<"stereo" | "mono">("stereo");
+  const [internalHdCodec, setInternalHdCodec] = useState<boolean>(true);
+
+  const micGain = propMicGain !== undefined ? propMicGain : internalMicGain;
+  const phonesVol = propPhonesVol !== undefined ? propPhonesVol : internalPhonesVol;
+  const isDimmed = propIsDimmed !== undefined ? propIsDimmed : internalIsDimmed;
+  const isMuted = propIsMuted !== undefined ? propIsMuted : internalIsMuted;
+  const autoDuck = propAutoDuck !== undefined ? propAutoDuck : internalAutoDuck;
+  const monitorMode = propMonitorMode !== undefined ? propMonitorMode : internalMonitorMode;
+  const hdCodec = propHdCodec !== undefined ? propHdCodec : internalHdCodec;
 
   // Meter readings
   const [micMeterLevel, setMicMeterLevel] = useState<number>(0);
@@ -125,14 +158,44 @@ export function ClaHardwareConsole({
 
   const handleMicGain = (val: number) => {
     const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));
-    setMicGain(clamped);
+    setInternalMicGain(clamped);
     if (onMicGainChange) onMicGainChange(clamped);
   };
 
   const handlePhonesVol = (val: number) => {
     const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));
-    setPhonesVol(clamped);
+    setInternalPhonesVol(clamped);
     if (onPhonesVolumeChange) onPhonesVolumeChange(clamped);
+  };
+
+  const toggleAutoDuck = () => {
+    const next = !autoDuck;
+    setInternalAutoDuck(next);
+    if (onAutoDuckToggle) onAutoDuckToggle(next);
+  };
+
+  const toggleMonitorMode = () => {
+    const next = monitorMode === "stereo" ? "mono" : "stereo";
+    setInternalMonitorMode(next);
+    if (onMonitorModeToggle) onMonitorModeToggle(next);
+  };
+
+  const toggleDim = () => {
+    const next = !isDimmed;
+    setInternalIsDimmed(next);
+    if (onDimToggle) onDimToggle(next);
+  };
+
+  const toggleHdCodec = () => {
+    const next = !hdCodec;
+    setInternalHdCodec(next);
+    if (onHdCodecToggle) onHdCodecToggle(next);
+  };
+
+  const toggleMute = () => {
+    const next = !isMuted;
+    setInternalIsMuted(next);
+    if (onMuteToggle) onMuteToggle(next);
   };
 
   const toggleTalkback = () => {
@@ -239,7 +302,7 @@ export function ClaHardwareConsole({
             <div className="flex flex-col items-center">
               <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">AUTO DUCK</span>
               <button
-                onClick={() => setAutoDuck(!autoDuck)}
+                onClick={toggleAutoDuck}
                 className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
                   autoDuck
                     ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_10px_rgba(234,179,8,0.6)] text-stone-950 font-black"
@@ -255,7 +318,7 @@ export function ClaHardwareConsole({
             <div className="flex flex-col items-center">
               <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">MONITOR</span>
               <button
-                onClick={() => setMonitorMode(monitorMode === "stereo" ? "mono" : "stereo")}
+                onClick={toggleMonitorMode}
                 className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
                   monitorMode === "stereo"
                     ? "bg-gradient-to-b from-[#67e8f9] via-[#06b6d4] to-[#0e7490] border-[#a5f3fc] shadow-[0_0_10px_rgba(6,182,212,0.6)] text-stone-950 font-black"
@@ -271,7 +334,7 @@ export function ClaHardwareConsole({
             <div className="flex flex-col items-center">
               <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">DIM</span>
               <button
-                onClick={() => setIsDimmed(!isDimmed)}
+                onClick={toggleDim}
                 className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
                   isDimmed
                     ? "bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] border-[#fca5a5] shadow-[0_0_10px_rgba(239,68,68,0.7)] text-white font-black"
@@ -287,7 +350,7 @@ export function ClaHardwareConsole({
             <div className="flex flex-col items-center">
               <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">CODEC</span>
               <button
-                onClick={() => setHdCodec(!hdCodec)}
+                onClick={toggleHdCodec}
                 className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
                   hdCodec
                     ? "bg-gradient-to-b from-[#86efac] via-[#22c55e] to-[#15803d] border-[#bbf7d0] shadow-[0_0_10px_rgba(34,197,94,0.6)] text-stone-950 font-black"
@@ -430,7 +493,7 @@ export function ClaHardwareConsole({
 
             {/* MUTE HEADPHONES TOGGLE BUTTON */}
             <button
-              onClick={() => setIsMuted(!isMuted)}
+              onClick={toggleMute}
               className={`w-full mt-3 py-3 rounded-xl font-mono text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer select-none ${
                 isMuted
                   ? "bg-red-600 hover:bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.7)] border border-red-400"

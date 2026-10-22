@@ -35,6 +35,36 @@ export default function ClientHubPage() {
   const [agencyTalkbackOn, setAgencyTalkbackOn] = useState<boolean>(false);
   const [guestTalkbackOn, setGuestTalkbackOn] = useState<boolean>(false);
 
+  // Separate Console & Audio Control states by role (Naručilac vs Klijent gost)
+  const [agencyConsole, setAgencyConsole] = useState({
+    micGain: 0,
+    phonesVol: 0,
+    isMuted: false,
+    isDimmed: false,
+    autoDuck: true,
+    monitorMode: "stereo" as "stereo" | "mono",
+    hdCodec: true,
+  });
+
+  const [guestConsole, setGuestConsole] = useState({
+    micGain: 0,
+    phonesVol: 0,
+    isMuted: false,
+    isDimmed: false,
+    autoDuck: true,
+    monitorMode: "stereo" as "stereo" | "mono",
+    hdCodec: true,
+  });
+
+  const activeConsole = currentRole === "agency_tenant" ? agencyConsole : guestConsole;
+  const updateActiveConsole = (patch: Partial<typeof agencyConsole>) => {
+    if (currentRole === "agency_tenant") {
+      setAgencyConsole((prev) => ({ ...prev, ...patch }));
+    } else {
+      setGuestConsole((prev) => ({ ...prev, ...patch }));
+    }
+  };
+
   const isCurrentTalkbackOn = currentRole === "agency_tenant" ? agencyTalkbackOn : guestTalkbackOn;
   const handleCurrentTalkbackToggle = async (active: boolean) => {
     if (currentRole === "agency_tenant") {
@@ -331,12 +361,27 @@ export default function ClientHubPage() {
                   ) : (
                     /* RADIO RECORDING TERMINAL (AUTHENTIC CLA ANALOG RACK UNIT) */
                     <ClaHardwareConsole
+                      key={currentRole}
                       studioName={studioName || "Studio TAF"}
                       projectName={activeSession.projectName}
                       speakerName={activeSession.speakerName}
                       isOnAir={activeSession.isOnAir}
                       isTalkbackActive={isCurrentTalkbackOn}
                       onTalkbackToggle={handleCurrentTalkbackToggle}
+                      micGain={activeConsole.micGain}
+                      onMicGainChange={(val) => updateActiveConsole({ micGain: val })}
+                      phonesVol={activeConsole.phonesVol}
+                      onPhonesVolumeChange={(val) => updateActiveConsole({ phonesVol: val })}
+                      isMuted={activeConsole.isMuted}
+                      onMuteToggle={(val) => updateActiveConsole({ isMuted: val })}
+                      isDimmed={activeConsole.isDimmed}
+                      onDimToggle={(val) => updateActiveConsole({ isDimmed: val })}
+                      autoDuck={activeConsole.autoDuck}
+                      onAutoDuckToggle={(val) => updateActiveConsole({ autoDuck: val })}
+                      monitorMode={activeConsole.monitorMode}
+                      onMonitorModeToggle={(val) => updateActiveConsole({ monitorMode: val })}
+                      hdCodec={activeConsole.hdCodec}
+                      onHdCodecToggle={(val) => updateActiveConsole({ hdCodec: val })}
                     />
                   )}
                 </div>
