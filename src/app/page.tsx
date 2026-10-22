@@ -31,8 +31,18 @@ export default function ClientHubPage() {
   const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
   const [studioName, setStudioName] = useState<string>("");
 
-  // Client Talkback (ON / OFF toggle)
-  const [clientTalkbackOn, setClientTalkbackOn] = useState<boolean>(false);
+  // Separate Talkback / Mic states by role (Naručilac vs Klijent gost)
+  const [agencyTalkbackOn, setAgencyTalkbackOn] = useState<boolean>(false);
+  const [guestTalkbackOn, setGuestTalkbackOn] = useState<boolean>(false);
+
+  const isCurrentTalkbackOn = currentRole === "agency_tenant" ? agencyTalkbackOn : guestTalkbackOn;
+  const handleCurrentTalkbackToggle = (active: boolean) => {
+    if (currentRole === "agency_tenant") {
+      setAgencyTalkbackOn(active);
+    } else {
+      setGuestTalkbackOn(active);
+    }
+  };
 
   // Active Segment for Client View
   const [clientSegmentIdx, setClientSegmentIdx] = useState<number>(0);
@@ -242,8 +252,15 @@ export default function ClientHubPage() {
               <div className="flex items-center gap-3">
                 <FluxaxNetLogo size="sm" />
                 <div className="border-l border-teal-200 pl-3">
-                  <div className="text-sm font-bold text-slate-900 leading-tight">
-                    {activeSession.projectName}
+                  <div className="text-sm font-bold text-slate-900 leading-tight flex items-center">
+                    <span>{activeSession.projectName}</span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ml-2 border ${
+                      currentRole === "agency_tenant"
+                        ? "bg-purple-100 text-purple-800 border-purple-300"
+                        : "bg-teal-100 text-teal-800 border-teal-300"
+                    }`}>
+                      {currentRole === "agency_tenant" ? "NARUČILAC (AGENCIJA)" : "KLIJENT (GOST)"}
+                    </span>
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium">
                     Spiker: <strong className="text-teal-700">{activeSession.speakerName}</strong>{studioName ? ` • ${studioName}` : ""}
@@ -297,8 +314,8 @@ export default function ClientHubPage() {
                       projectName={activeSession.projectName}
                       speakerName={activeSession.speakerName}
                       isOnAir={activeSession.isOnAir}
-                      isTalkbackActive={clientTalkbackOn}
-                      onTalkbackToggle={(act) => setClientTalkbackOn(act)}
+                      isTalkbackActive={isCurrentTalkbackOn}
+                      onTalkbackToggle={handleCurrentTalkbackToggle}
                     />
                   )}
                 </div>
