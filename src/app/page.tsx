@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import FluxaxNetLogo from "@/components/FluxaxNetLogo";
 import ReceptionLobby from "@/components/ReceptionLobby";
 import StudioDirectorConsole from "@/components/StudioDirectorConsole";
+import { ClaHardwareConsole } from "@/components/ClaHardwareConsole";
 import {
   Tv,
   Mic,
@@ -329,6 +330,22 @@ export default function ClientHubPage() {
                       <span>{clientTalkbackOn ? "🔴 MIKROFON UKLJUČEN" : "⚪ MIKROFON ISKLJUČEN"}</span>
                     </button>
                   </div>
+                </div>
+
+                {/* VINTAGE ANALOG CUE MIX & MONITORING RACK (CLA VOCALS SIGNATURE) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-mono font-bold tracking-widest text-slate-700 uppercase">
+                      🎛️ Personalni Cue Mix Pult (Šta čujete u slušalicama)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      Zero-Latency • 48 kHz 24-bit
+                    </span>
+                  </div>
+                  <ClaHardwareConsole
+                    title={studioName || "Studio TAF"}
+                    subtitle="Client Cue Mix"
+                  />
                 </div>
 
                 {/* Scenario & Takes for Client */}
