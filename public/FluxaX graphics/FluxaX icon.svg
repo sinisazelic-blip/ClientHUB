@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="coreTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5ec2c0" />
+      <stop offset="100%" stop-color="#3ea8a6" />
+    </linearGradient>
+    <radialGradient id="coreTealLed" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#a8ffff" />
+      <stop offset="40%" stop-color="#3ea8a6" />
+      <stop offset="100%" stop-color="#1b5e5c" />
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="115" ry="115" fill="#1b1f24" stroke="#323a44" stroke-width="3" />
+
+  <path d="M 90 83 H 263 V 163 H 162 V 223 H 245 V 303 H 162 V 429 H 90 Z" fill="#ffffff" />
+  <polygon points="183,169 248,169 416,429 351,429" fill="url(#coreTeal)" />
+  <polygon points="412,169 347,169 153,429 218,429" fill="url(#coreTeal)" />
+
+  <circle cx="399" cy="151" r="30" fill="url(#coreTealLed)" stroke="#ffffff" stroke-width="3.5" />
+</svg>

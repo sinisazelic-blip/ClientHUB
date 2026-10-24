@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FluxaX",
-  description: "FluxaX Net Client HUB",
+  title: "FluxaX Client HUB",
+  description: "FluxaX Net Client HUB • Ultra-Low Latency Broadcast & Remote VO / Video Screening",
   icons: {
-    icon: "/branding/fluxax-net-brand.svg",
+    icon: "/FluxaX graphics/icon-clienthub.svg",
+    shortcut: "/FluxaX graphics/icon-clienthub.svg",
+    apple: "/FluxaX graphics/icon-clienthub.svg",
   },
 };
 

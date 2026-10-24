@@ -300,7 +300,7 @@ export function ClaHardwareConsole({
           <div className="flex items-center gap-3 sm:gap-5">
             {/* 1. AUTO-DUCK ON TALKBACK */}
             <div className="flex flex-col items-center">
-              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">AUTO DUCK</span>
+              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">DUCK</span>
               <button
                 onClick={toggleAutoDuck}
                 className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
@@ -308,29 +308,13 @@ export function ClaHardwareConsole({
                     ? "bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#ca8a04] border-[#fef08a] shadow-[0_0_10px_rgba(234,179,8,0.6)] text-stone-950 font-black"
                     : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
                 }`}
-                title="Automatski utišava muziku za 20dB dok govorite u režiju"
+                title="Automatski utišava miks za 20dB dok govorite u režiju"
               >
                 <span className="text-[10px] font-bold">-20dB</span>
               </button>
             </div>
 
-            {/* 2. STEREO / MONO CHECK */}
-            <div className="flex flex-col items-center">
-              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">MONITOR</span>
-              <button
-                onClick={toggleMonitorMode}
-                className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
-                  monitorMode === "stereo"
-                    ? "bg-gradient-to-b from-[#67e8f9] via-[#06b6d4] to-[#0e7490] border-[#a5f3fc] shadow-[0_0_10px_rgba(6,182,212,0.6)] text-stone-950 font-black"
-                    : "bg-gradient-to-b from-[#fde047] via-[#eab308] to-[#a16207] border-[#fef08a] text-stone-950 font-bold"
-                }`}
-                title="Prebaci slušanje između Stereo i Mono kompatibilnosti"
-              >
-                <span className="text-[9px] font-bold">{monitorMode === "stereo" ? "ST" : "MONO"}</span>
-              </button>
-            </div>
-
-            {/* 3. DIM (-20 dB) ATTENUATION */}
+            {/* 2. DIM (-20 dB) ATTENUATION */}
             <div className="flex flex-col items-center">
               <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">DIM</span>
               <button
@@ -340,26 +324,21 @@ export function ClaHardwareConsole({
                     ? "bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] border-[#fca5a5] shadow-[0_0_10px_rgba(239,68,68,0.7)] text-white font-black"
                     : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
                 }`}
-                title="Brzo stišavanje tona dok se javljate na telefon"
+                title="Brzo stišavanje tona (telefonski poziv ili diskusija u sobi)"
               >
                 <span className="text-[9px] font-bold">DIM</span>
               </button>
             </div>
 
-            {/* 4. HD OPUS CODEC */}
+            {/* 3. ZERO-BLEED DSP LOCK */}
             <div className="flex flex-col items-center">
-              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">CODEC</span>
-              <button
-                onClick={toggleHdCodec}
-                className={`w-9 h-6 rounded-[3px] border transition-all flex items-center justify-center cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
-                  hdCodec
-                    ? "bg-gradient-to-b from-[#86efac] via-[#22c55e] to-[#15803d] border-[#bbf7d0] shadow-[0_0_10px_rgba(34,197,94,0.6)] text-stone-950 font-black"
-                    : "bg-gradient-to-b from-[#334155] to-[#1e293b] border-[#475569] text-stone-400"
-                }`}
-                title="48 kHz High-Fidelity Opus Stream"
+              <span className="text-[7px] font-mono uppercase text-stone-400 mb-0.5 font-bold">DSP</span>
+              <div
+                className="w-10 h-6 rounded-[3px] border border-emerald-500/60 bg-emerald-950/70 flex items-center justify-center text-emerald-400 font-mono text-[9px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] cursor-help"
+                title="Zero-Bleed DSP: Sprečava povrat mikrofonije i odjek glasa"
               >
-                <span className="text-[9px] font-bold">48k</span>
-              </button>
+                LOCK
+              </div>
             </div>
           </div>
         </div>
@@ -434,7 +413,7 @@ export function ClaHardwareConsole({
               </div>
 
               <div className="text-xl sm:text-2xl font-mono font-black text-white tracking-tight my-1">
-                48.000 Hz • 24-BIT STEREO
+                STUDIO BROADCAST • 24-BIT FEED
               </div>
 
               <div className="text-[11px] font-mono text-stone-400 flex items-center gap-3 mt-1">

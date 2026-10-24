@@ -14,6 +14,31 @@ export interface SessionSegment {
   takes: SessionTake[];
 }
 
+export interface ProjectFileItem {
+  id: string;
+  name: string;
+  size: string;
+  type: "audio" | "video" | "doc";
+  uploadedAt: string;
+  url: string;
+}
+
+export interface SessionAttendee {
+  id: string;
+  name: string;
+  role: "studio_director" | "agency_tenant" | "guest_participant" | "speaker";
+  company?: string;
+  isMuted?: boolean;
+  isSpeaking?: boolean;
+}
+
+export interface SessionBilling {
+  status: "active" | "stopped" | "idle";
+  startedAt: number | null;
+  totalElapsedSeconds: number;
+  hourlyRateEur: number;
+}
+
 export interface SessionItem {
   id: string;
   projectName: string;
@@ -24,9 +49,13 @@ export interface SessionItem {
   isDoorOpen: boolean;
   isOnAir: boolean;
   videoEnabled: boolean;
+  focusMode: "audio" | "video"; // Video screening focus vs Audio focus
   recStartTime: number | null;
   fluxaDownloadUrl?: string;
   segments: SessionSegment[];
+  attendees: SessionAttendee[];
+  projectFiles: ProjectFileItem[];
+  billing: SessionBilling;
 }
 
 // Global in-memory state
@@ -49,15 +78,36 @@ let sessionsList: SessionItem[] = [
   {
     id: "taf-coca-cola-2026",
     projectName: "Coca-Cola (Ljetna kampanja 2026)",
-    clientName: "Studio Ritem / Media Focus",
+    clientName: "Saatchi & Saatchi / Media Focus",
     speakerName: "Goran (Glavni glas)",
     date: new Date().toISOString().split("T")[0],
     time: "20:30",
     isDoorOpen: true,
     isOnAir: false,
-    videoEnabled: false, // Default: Radio / Voiceover Info Box
+    videoEnabled: false,
+    focusMode: "audio",
     recStartTime: null,
     fluxaDownloadUrl: "https://drive.google.com/drive/folders/fluxa-taf-coca-cola-final",
+    billing: {
+      status: "active",
+      startedAt: Date.now() - 25 * 60 * 1000,
+      totalElapsedSeconds: 1500,
+      hourlyRateEur: 75,
+    },
+    attendees: [
+      { id: "att-dir", name: "Režija (Siniša)", role: "studio_director", company: "Studio TAF", isMuted: false, isSpeaking: false },
+      { id: "att-spk", name: "Goran (Spiker)", role: "speaker", company: "Glumačka soba", isMuted: false, isSpeaking: true },
+      { id: "att-naru", name: "Saatchi & Saatchi", role: "agency_tenant", company: "Naručilac", isMuted: false, isSpeaking: false },
+      { id: "att-1", name: "Jasna V.", role: "guest_participant", company: "Coca-Cola Brand Mgr", isMuted: true, isSpeaking: false },
+      { id: "att-2", name: "Petar M.", role: "guest_participant", company: "Kreativni direktor", isMuted: true, isSpeaking: false },
+      { id: "att-3", name: "John S.", role: "guest_participant", company: "Regional Supervisor", isMuted: true, isSpeaking: false },
+      { id: "att-4", name: "Ana K.", role: "guest_participant", company: "Copywriter", isMuted: true, isSpeaking: false },
+    ],
+    projectFiles: [
+      { id: "f-1", name: "CocaCola_Take2_Master_48k24b.wav", size: "24.6 MB", type: "audio", uploadedAt: "20:45", url: "#" },
+      { id: "f-2", name: "CocaCola_Summer_Cut_v3_1080p.mp4", size: "142.1 MB", type: "video", uploadedAt: "20:35", url: "#" },
+      { id: "f-3", name: "Scenario_i_Timing_Odobreno.pdf", size: "1.2 MB", type: "doc", uploadedAt: "20:25", url: "#" },
+    ],
     segments: [
       {
         id: "seg-1",
@@ -99,11 +149,26 @@ let sessionsList: SessionItem[] = [
     speakerName: "Jelena (Ženski vokal)",
     date: new Date().toISOString().split("T")[0],
     time: "22:00",
-    isDoorOpen: false, // Vrata zatvorena - čekaonica
+    isDoorOpen: false,
     isOnAir: false,
     videoEnabled: false,
+    focusMode: "audio",
     recStartTime: null,
     fluxaDownloadUrl: "https://drive.google.com/drive/folders/fluxa-taf-intesa",
+    billing: {
+      status: "idle",
+      startedAt: null,
+      totalElapsedSeconds: 0,
+      hourlyRateEur: 75,
+    },
+    attendees: [
+      { id: "att-dir2", name: "Režija", role: "studio_director", company: "Studio TAF", isMuted: false, isSpeaking: false },
+      { id: "att-spk2", name: "Jelena (Spiker)", role: "speaker", company: "Glumačka soba", isMuted: false, isSpeaking: false },
+      { id: "att-naru2", name: "McCann Beograd", role: "agency_tenant", company: "Naručilac", isMuted: false, isSpeaking: false },
+    ],
+    projectFiles: [
+      { id: "f-4", name: "Intesa_Radio_Scenario_v1.pdf", size: "0.8 MB", type: "doc", uploadedAt: "19:00", url: "#" },
+    ],
     segments: [
       {
         id: "seg-intesa-1",
@@ -169,36 +234,101 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, activeSessionId });
     }
 
-    // Door Toggle (Button 6: Otvori/Zatvori vrata)
+    // Door Toggle (Otvori/Zatvori vrata)
     if (body.action === "TOGGLE_DOOR") {
       const s = sessionsList.find((x) => x.id === activeSessionId);
       if (s) {
         s.isDoorOpen = typeof body.isOpen === "boolean" ? body.isOpen : !s.isDoorOpen;
-        return NextResponse.json({ success: true, isDoorOpen: s.isDoorOpen });
+        if (s.isDoorOpen && s.billing.status !== "active") {
+          s.billing.status = "active";
+          if (!s.billing.startedAt) s.billing.startedAt = Date.now();
+        }
+        return NextResponse.json({ success: true, isDoorOpen: s.isDoorOpen, billing: s.billing });
       }
     }
 
-    // ON AIR Toggle (Button 5: REC ON AIR)
+    // ON AIR Toggle (REC ON AIR)
     if (body.action === "TOGGLE_ON_AIR") {
       const s = sessionsList.find((x) => x.id === activeSessionId);
       if (s) {
         s.isOnAir = typeof body.isOnAir === "boolean" ? body.isOnAir : !s.isOnAir;
-        if (s.isOnAir) s.recStartTime = Date.now();
-        else s.recStartTime = null;
+        if (s.isOnAir) {
+          s.recStartTime = Date.now();
+          if (s.billing.status !== "active") {
+            s.billing.status = "active";
+            if (!s.billing.startedAt) s.billing.startedAt = Date.now();
+          }
+        } else {
+          s.recStartTime = null;
+        }
         return NextResponse.json({ success: true, isOnAir: s.isOnAir, recStartTime: s.recStartTime });
       }
     }
 
-    // Video Preview Toggle (Slika 1: Video ON/OFF)
+    // Focus Mode Toggle (Audio Focus vs Video Screening Focus)
+    if (body.action === "SET_FOCUS_MODE" && body.focusMode) {
+      const s = sessionsList.find((x) => x.id === activeSessionId);
+      if (s) {
+        s.focusMode = body.focusMode === "video" ? "video" : "audio";
+        s.videoEnabled = s.focusMode === "video";
+        return NextResponse.json({ success: true, focusMode: s.focusMode, videoEnabled: s.videoEnabled });
+      }
+    }
+
+    // Video Preview Toggle
     if (body.action === "TOGGLE_VIDEO") {
       const s = sessionsList.find((x) => x.id === activeSessionId);
       if (s) {
         s.videoEnabled = typeof body.enabled === "boolean" ? body.enabled : !s.videoEnabled;
-        return NextResponse.json({ success: true, videoEnabled: s.videoEnabled });
+        s.focusMode = s.videoEnabled ? "video" : "audio";
+        return NextResponse.json({ success: true, videoEnabled: s.videoEnabled, focusMode: s.focusMode });
       }
     }
 
-    // Take Status update (Slika 4: Oznaka tejka: final / alt / rejected / none)
+    // Billing Timer Control
+    if (body.action === "SET_BILLING_STATUS" && body.status) {
+      const s = sessionsList.find((x) => x.id === activeSessionId);
+      if (s) {
+        s.billing.status = body.status;
+        if (body.status === "active" && !s.billing.startedAt) {
+          s.billing.startedAt = Date.now();
+        } else if (body.status === "stopped" || body.status === "idle") {
+          s.billing.startedAt = null;
+        }
+        return NextResponse.json({ success: true, billing: s.billing });
+      }
+    }
+
+    // Attendee Mute / Toggle
+    if (body.action === "TOGGLE_ATTENDEE_MUTE" && body.attendeeId) {
+      const s = sessionsList.find((x) => x.id === activeSessionId);
+      if (s) {
+        const att = s.attendees.find((a) => a.id === body.attendeeId);
+        if (att) {
+          att.isMuted = typeof body.isMuted === "boolean" ? body.isMuted : !att.isMuted;
+          return NextResponse.json({ success: true, attendee: att });
+        }
+      }
+    }
+
+    // Project File Add
+    if (body.action === "ADD_PROJECT_FILE" && body.file) {
+      const s = sessionsList.find((x) => x.id === activeSessionId);
+      if (s) {
+        const newFile: ProjectFileItem = {
+          id: `f-${Date.now()}`,
+          name: body.file.name || "Export_Take.wav",
+          size: body.file.size || "15 MB",
+          type: body.file.type || "audio",
+          uploadedAt: new Date().toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit" }),
+          url: body.file.url || "#",
+        };
+        s.projectFiles.unshift(newFile);
+        return NextResponse.json({ success: true, file: newFile, projectFiles: s.projectFiles });
+      }
+    }
+
+    // Take Status update
     if (body.action === "SET_TAKE_STATUS") {
       const { segmentId, takeId, status } = body;
       const s = sessionsList.find((x) => x.id === activeSessionId);
@@ -212,7 +342,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Add new take to segment (Slika 4: Dinamički tejkovi)
+    // Add new take to segment
     if (body.action === "ADD_TAKE") {
       const { segmentId, name } = body;
       const s = sessionsList.find((x) => x.id === activeSessionId);
@@ -244,7 +374,20 @@ export async function POST(req: Request) {
         isDoorOpen: false,
         isOnAir: false,
         videoEnabled: false,
+        focusMode: "audio",
         recStartTime: null,
+        billing: {
+          status: "idle",
+          startedAt: null,
+          totalElapsedSeconds: 0,
+          hourlyRateEur: 75,
+        },
+        attendees: [
+          { id: `att-dir-${Date.now()}`, name: "Režija", role: "studio_director", company: "Studio TAF", isMuted: false },
+          { id: `att-spk-${Date.now()}`, name: speakerName || "Spiker", role: "speaker", company: "Glumačka soba", isMuted: false },
+          { id: `att-cli-${Date.now()}`, name: clientName || "Naručilac", role: "agency_tenant", company: "Klijent", isMuted: false },
+        ],
+        projectFiles: [],
         segments: [
           {
             id: "seg-1",

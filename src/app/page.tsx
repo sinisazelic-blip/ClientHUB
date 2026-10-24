@@ -15,8 +15,21 @@ import {
   MessageSquare,
   ExternalLink,
   Send,
+  Users,
+  Share2,
+  FileAudio,
+  FileVideo,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Video,
 } from "lucide-react";
-import { SessionItem, SessionTake } from "@/app/api/studio/status/route";
+import {
+  SessionItem,
+  SessionTake,
+  SessionAttendee,
+  ProjectFileItem,
+} from "@/app/api/studio/status/route";
 import { format24Time, format24TimeShort } from "@/lib/formatTime";
 import { APP_CONFIG } from "@/config/appConfig";
 
@@ -35,7 +48,7 @@ export default function ClientHubPage() {
   const [agencyTalkbackOn, setAgencyTalkbackOn] = useState<boolean>(false);
   const [guestTalkbackOn, setGuestTalkbackOn] = useState<boolean>(false);
 
-  // Separate Console & Audio Control states by role (Naručilac vs Klijent gost)
+  // Console & Audio Control states by role
   const [agencyConsole, setAgencyConsole] = useState({
     micGain: 0,
     phonesVol: 0,
@@ -94,8 +107,8 @@ export default function ClientHubPage() {
     { sender: string; text: string; time: string; isDirector?: boolean }[]
   >([
     {
-      sender: "Režija",
-      text: "Dobrodošli u studio. Spremni smo za početak snimanja.",
+      sender: "Režija (Siniša)",
+      text: "Dobrodošli u studio. Oprema i linije su spremne, možemo početi.",
       time: "20:30",
       isDirector: true,
     },
@@ -115,6 +128,7 @@ export default function ClientHubPage() {
           setStudioName(data.studioName);
         }
 
+        // Auto door enter for client/agency if door is open
         if (data.activeSession?.isDoorOpen && currentRole !== "studio_director") {
           setIsInStudio(true);
         } else if (!data.activeSession?.isDoorOpen && currentRole !== "studio_director") {
@@ -179,10 +193,10 @@ export default function ClientHubPage() {
     if (!newChatText.trim()) return;
     const sender =
       currentRole === "studio_director"
-        ? "Režija (Siniša)"
+        ? "Režija"
         : currentRole === "agency_tenant"
-        ? "Naručilac (Agencija)"
-        : "Gost";
+        ? "Naručilac"
+        : "Klijent";
 
     setChatMessages((prev) => [
       ...prev,
@@ -222,16 +236,19 @@ export default function ClientHubPage() {
   return (
     <div className="min-h-screen studio-light-bg text-slate-800 flex flex-col font-sans">
       {/* GLOBAL ROLE SWITCHER BAR */}
-      <div className="bg-white/85 border-b border-teal-200/80 px-6 py-2 flex items-center justify-between text-xs z-50 backdrop-blur-sm shadow-sm">
+      <div className="bg-white/90 border-b border-teal-200/80 px-6 py-2 flex items-center justify-between text-xs z-50 backdrop-blur-sm shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
             Režim Prikaza:
           </span>
           <div className="inline-flex bg-teal-50/80 p-0.5 rounded-lg border border-teal-200">
+            {/* STUDIO BUTTON: NEVER FORCES EXIT IF ACTIVE SESSION EXISTS */}
             <button
               onClick={() => {
                 setCurrentRole("studio_director");
-                setIsInStudio(false);
+                if (activeSession) {
+                  setIsInStudio(true);
+                }
               }}
               className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 currentRole === "studio_director"
@@ -239,7 +256,7 @@ export default function ClientHubPage() {
                   : "text-slate-600 hover:text-teal-900"
               }`}
             >
-              Studio
+              Studio (Režija)
             </button>
             <button
               onClick={() => setCurrentRole("agency_tenant")}
@@ -249,7 +266,7 @@ export default function ClientHubPage() {
                   : "text-slate-600 hover:text-teal-900"
               }`}
             >
-              Naručilac
+              Naručilac (Agencija)
             </button>
             <button
               onClick={() => setCurrentRole("guest_participant")}
@@ -259,7 +276,7 @@ export default function ClientHubPage() {
                   : "text-slate-600 hover:text-teal-900"
               }`}
             >
-              Klijent
+              Klijent (Gost)
             </button>
           </div>
         </div>
@@ -295,7 +312,7 @@ export default function ClientHubPage() {
           />
         )
       ) : (
-        /* CLIENT / GUEST LIVE STUDIO ROOM - LIGHT TEAL DESIGN */
+        /* CLIENT / NARUČILAC LIVE STUDIO ROOM - LIGHT TEAL DESIGN */
         activeSession && (
           <div className="flex-1 flex flex-col">
             {/* Topbar for Client */}
@@ -305,16 +322,19 @@ export default function ClientHubPage() {
                 <div className="border-l border-teal-200 pl-3">
                   <div className="text-sm font-bold text-slate-900 leading-tight flex items-center">
                     <span>{activeSession.projectName}</span>
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ml-2 border ${
-                      currentRole === "agency_tenant"
-                        ? "bg-purple-100 text-purple-800 border-purple-300"
-                        : "bg-teal-100 text-teal-800 border-teal-300"
-                    }`}>
-                      {currentRole === "agency_tenant" ? "NARUČILAC (AGENCIJA)" : "KLIJENT (GOST)"}
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ml-2 border ${
+                        currentRole === "agency_tenant"
+                          ? "bg-purple-100 text-purple-800 border-purple-300"
+                          : "bg-teal-100 text-teal-800 border-teal-300"
+                      }`}
+                    >
+                      {currentRole === "agency_tenant" ? "NARUČILAC (ODOBRAVANJE)" : "KLIJENT (SLUŠANJE)"}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium">
-                    Spiker: <strong className="text-teal-700">{activeSession.speakerName}</strong>{studioName ? ` • ${studioName}` : ""}
+                    Spiker: <strong className="text-teal-700">{activeSession.speakerName}</strong>
+                    {studioName ? ` • ${studioName}` : ""}
                   </div>
                 </div>
               </div>
@@ -334,7 +354,7 @@ export default function ClientHubPage() {
 
                 <button
                   onClick={handleExitStudio}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer border border-slate-200"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Izađi</span>
@@ -342,24 +362,58 @@ export default function ClientHubPage() {
               </div>
             </header>
 
+            {/* DYNAMIC MULTI-CLIENT BAR IN CLIENT VIEW */}
+            {activeSession.attendees && activeSession.attendees.length > 0 && (
+              <div className="bg-slate-900 text-white border-b border-slate-800 px-6 py-2 overflow-x-auto scrollbar-thin">
+                <div className="flex items-center gap-3 min-w-max">
+                  <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400 uppercase tracking-wider pr-3 border-r border-slate-800">
+                    <Users className="w-3.5 h-3.5 text-teal-400" />
+                    <span>Učesnici ({activeSession.attendees.length}):</span>
+                  </div>
+
+                  {activeSession.attendees.map((att) => (
+                    <div
+                      key={att.id}
+                      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs ${
+                        att.isSpeaking
+                          ? "bg-teal-950/80 border-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.4)]"
+                          : "bg-slate-800/80 border-slate-700 text-slate-300"
+                      }`}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-slate-700 text-[9px] font-bold flex items-center justify-center text-white">
+                        {att.name.charAt(0)}
+                      </div>
+                      <span className="font-bold text-[11px] text-slate-100">{att.name}</span>
+                      <span className="text-[9px] text-slate-400 font-mono">({att.company || "Učesnik"})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Client Studio Body */}
             <main className="flex-1 p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: Visual Screen & Scenario */}
+              {/* Left Column: Visual Screen, Scenario & Audio Trezor */}
               <div className="lg:col-span-8 space-y-6">
-                {/* VIDEO OR STUDIO RADIO MONITOR */}
+
+                {/* VIDEO SCREENING OR AUTHENTIC CLA AUDIO CONSOLE */}
                 <div className="rounded-2xl overflow-hidden shadow-sm">
-                  {activeSession.videoEnabled ? (
-                    <div className="p-8 text-center bg-slate-900 border border-teal-200/80 rounded-2xl text-white min-h-[240px] flex flex-col items-center justify-center">
-                      <Tv className="w-12 h-12 text-teal-400 mb-2 opacity-80" />
+                  {activeSession.focusMode === "video" || activeSession.videoEnabled ? (
+                    <div className="p-8 text-center bg-slate-950 border border-slate-800 rounded-2xl text-white min-h-[300px] flex flex-col items-center justify-center relative">
+                      <Tv className="w-12 h-12 text-purple-400 mb-2 opacity-90" />
                       <h4 className="text-sm font-bold text-white mb-1">
-                        Video prozor iz DAW / montažnog programa
+                        Video Screening Uživo • DaVinci / Premiere Previews
                       </h4>
                       <p className="text-xs text-slate-300 max-w-md">
                         Slika je sinhronizovana sa tonom u realnom vremenu (1080p, ultra-niska latencija).
                       </p>
+                      <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-900/60 border border-purple-600 text-purple-200 text-xs font-mono">
+                        <Video className="w-3.5 h-3.5" />
+                        <span>VIDEO STREAM AKTIVAN • ZERO-BLEED AUDIO</span>
+                      </div>
                     </div>
                   ) : (
-                    /* RADIO RECORDING TERMINAL (AUTHENTIC CLA ANALOG RACK UNIT) */
+                    /* AUTHENTIC CLA ANALOG RACK UNIT */
                     <ClaHardwareConsole
                       key={currentRole}
                       studioName={studioName || "Studio TAF"}
@@ -386,12 +440,19 @@ export default function ClientHubPage() {
                   )}
                 </div>
 
-                {/* Scenario & Takes for Client */}
+                {/* Scenario & Takes with Approval Controls */}
                 <div className="bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm">
                   <div className="flex items-center justify-between pb-3 border-b border-teal-100 mb-4">
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                      Scenario & Odabir Tejkova
-                    </h4>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Scenario & Odabir Tejkova
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {currentRole === "agency_tenant"
+                          ? "Kao naručilac posla, možete direktno odobriti ili zatražiti ponavljanje tejka"
+                          : "Slušajte tejkove i dajte verbalne sugestije režiji"}
+                      </p>
+                    </div>
 
                     {/* Segment tabs */}
                     <div className="flex gap-2">
@@ -420,38 +481,141 @@ export default function ClientHubPage() {
                         </p>
                       </div>
 
-                      {/* Takes for client voting / starring */}
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <span className="text-xs font-bold text-slate-600 mr-1">Ocjena tejka:</span>
+                      {/* Takes for client / agency approval */}
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <span className="text-xs font-bold text-slate-600 mr-1">Tejkovi:</span>
                         {activeSeg.takes.map((take) => (
                           <div
                             key={take.id}
-                            className="inline-flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-xl px-3 py-1 text-xs"
+                            className={`inline-flex items-center gap-2 bg-white border rounded-xl px-3 py-1.5 text-xs shadow-sm ${
+                              take.status === "final"
+                                ? "border-emerald-400 bg-emerald-50/30 ring-1 ring-emerald-400"
+                                : take.status === "rejected"
+                                ? "border-red-300 bg-red-50/30"
+                                : "border-slate-200"
+                            }`}
                           >
                             <span className="font-mono text-slate-900 font-bold">{take.name}</span>
-                            <button
-                              onClick={() =>
-                                handleClientSetTakeStatus(
-                                  activeSeg.id,
-                                  take.id,
-                                  take.status === "final" ? "none" : "final"
-                                )
-                              }
-                              title="Glasaj za ovaj tejk (Zvijezdica)"
-                              className={`p-1 rounded cursor-pointer ${
-                                take.status === "final"
-                                  ? "text-emerald-600"
-                                  : "text-slate-400 hover:text-emerald-600"
-                              }`}
-                            >
-                              <Star className={`w-3.5 h-3.5 ${take.status === "final" ? "fill-current" : ""}`} />
-                            </button>
+
+                            {/* Status label */}
+                            {take.status === "final" && (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                                ODOBRENO (FINAL)
+                              </span>
+                            )}
+                            {take.status === "alt" && (
+                              <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                REZERVA
+                              </span>
+                            )}
+                            {take.status === "rejected" && (
+                              <span className="text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">
+                                PONOVITI
+                              </span>
+                            )}
+
+                            {/* Naručilac explicit approval buttons */}
+                            {currentRole === "agency_tenant" && (
+                              <div className="flex items-center gap-1 ml-1 pl-2 border-l border-slate-200">
+                                <button
+                                  onClick={() =>
+                                    handleClientSetTakeStatus(
+                                      activeSeg.id,
+                                      take.id,
+                                      take.status === "final" ? "none" : "final"
+                                    )
+                                  }
+                                  title="Odobri ovaj tejk za finalnu verziju"
+                                  className={`p-1 rounded cursor-pointer ${
+                                    take.status === "final"
+                                      ? "bg-emerald-600 text-white"
+                                      : "text-slate-400 hover:text-emerald-600"
+                                  }`}
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleClientSetTakeStatus(
+                                      activeSeg.id,
+                                      take.id,
+                                      take.status === "rejected" ? "none" : "rejected"
+                                    )
+                                  }
+                                  title="Zatraži da spiker ponovi tejk"
+                                  className={`p-1 rounded cursor-pointer ${
+                                    take.status === "rejected"
+                                      ? "bg-red-600 text-white"
+                                      : "text-slate-400 hover:text-red-600"
+                                  }`}
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
+
+                {/* Project Share / Audio Trezor in Client View */}
+                {activeSession.projectFiles && activeSession.projectFiles.length > 0 && (
+                  <div className="bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between pb-3 border-b border-teal-100 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Share2 className="w-4 h-4 text-teal-600" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                          Audio Trezor • Direktno Preuzimanje Master Fajlova
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 font-bold">
+                        WAV 48kHz / MP3
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {activeSession.projectFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm"
+                        >
+                          <div className="flex items-center gap-2.5 overflow-hidden">
+                            <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center shrink-0">
+                              {file.type === "audio" ? (
+                                <FileAudio className="w-4 h-4" />
+                              ) : file.type === "video" ? (
+                                <FileVideo className="w-4 h-4" />
+                              ) : (
+                                <FileText className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div className="overflow-hidden">
+                              <h5 className="text-xs font-bold text-slate-900 truncate" title={file.name}>
+                                {file.name}
+                              </h5>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {file.size} • {file.uploadedAt}
+                              </span>
+                            </div>
+                          </div>
+
+                          <a
+                            href={file.url}
+                            download
+                            title="Preuzmi Master fajl"
+                            className="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1 shadow-sm shrink-0 ml-2"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Preuzmi</span>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               </div>
 
               {/* Right Column: Live Chat with Režija */}
@@ -494,7 +658,7 @@ export default function ClientHubPage() {
                     type="text"
                     value={newChatText}
                     onChange={(e) => setNewChatText(e.target.value)}
-                    placeholder="Upišite napomenu za režiju..."
+                    placeholder="Upišite sugestiju ili napomenu..."
                     className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:border-teal-500 font-medium"
                   />
                   <button

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="hubLightBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e8edf2" />
+    </linearGradient>
+    <radialGradient id="hubTealLed" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#a8ffff" />
+      <stop offset="40%" stop-color="#3ea8a6" />
+      <stop offset="100%" stop-color="#1b5e5c" />
+    </radialGradient>
+    <filter id="hubTealGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Baza ikone -->
+  <rect width="512" height="512" rx="115" ry="115" fill="url(#hubLightBase)" stroke="#cdd6df" stroke-width="3" />
+
+  <!-- Koncentrični emitirani valovi (ishodište: cx=399, cy=151) -->
+  <g id="waves" stroke="#3ea8a6" fill="none" stroke-linecap="round">
+    <circle cx="399" cy="151" r="72" stroke-width="6.5" opacity="0.85" />
+    <circle cx="399" cy="151" r="132" stroke-width="6" opacity="0.6" />
+    <circle cx="399" cy="151" r="198" stroke-width="5" stroke-dasharray="18,12" opacity="0.4" />
+    <circle cx="399" cy="151" r="270" stroke-width="4" opacity="0.25" />
+    <!-- Mrežne točke na putanji valova -->
+    <circle cx="309" cy="249" r="10" fill="#3ea8a6" stroke="#ffffff" stroke-width="3" />
+    <circle cx="226" cy="339" r="8.5" fill="#3ea8a6" stroke="#ffffff" stroke-width="2.5" />
+  </g>
+
+  <!-- Monogram FX -->
+  <g id="monogram">
+    <!-- F (grafitno sivo) -->
+    <path d="M 90 83 H 263 V 163 H 162 V 223 H 245 V 303 H 162 V 429 H 90 Z" fill="#1b1e22" />
+    <!-- X krakovi (tirkiz) -->
+    <polygon points="183,169 248,169 416,429 351,429" fill="#3ea8a6" />
+    <polygon points="412,169 347,169 153,429 218,429" fill="#3ea8a6" />
+  </g>
+
+  <!-- Tirkizni mrežni odašiljač -->
+  <g id="teal-emitter">
+    <circle cx="399" cy="151" r="33" fill="url(#hubTealLed)" stroke="#ffffff" stroke-width="4" filter="url(#hubTealGlow)" />
+    <ellipse cx="391" cy="142" rx="10" ry="6" fill="#ffffff" opacity="0.75" />
+  </g>
+</svg>

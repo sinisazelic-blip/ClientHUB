@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 88" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sbLogoTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5ec2c0" />
+      <stop offset="100%" stop-color="#3ea8a6" />
+    </linearGradient>
+    <radialGradient id="sbLogoRed" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ff7373" />
+      <stop offset="40%" stop-color="#e60000" />
+      <stop offset="100%" stop-color="#7a0000" />
+    </radialGradient>
+    <filter id="sbRedMiniGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Gornji red: FluxaX (skalirano na 78%) -->
+  <g transform="scale(0.78)">
+    <path d="M 0 1 H 34 V 10 H 10 V 20 H 30 V 29 H 10 V 49 H 0 Z" fill="#ffffff" />
+    <rect x="44" y="1" width="8" height="48" fill="#ffffff" />
+    <path d="M 66 23 H 74 V 39 C 74 42 76 42 84 42 C 92 42 94 42 94 39 V 15 H 102 V 39 C 102 47 95 50 84 50 C 73 50 66 47 66 39 Z" fill="#ffffff" />
+    <circle cx="70" cy="18" r="4" fill="#3ea8a6" />
+    <polygon points="116,15 125,15 152,49 143,49" fill="#3ea8a6" />
+    <polygon points="152,15 143,15 116,49 125,49" fill="#3ea8a6" />
+    <path d="M 166 27 C 166 18 174 15 184 15 C 194 15 202 18 202 27 V 49 H 194 V 44 C 191 48 186 50 180 50 C 172 50 166 45 166 39 C 166 32 172 29 182 28 L 194 27 V 25 C 194 21 190 20 184 20 C 178 20 174 22 174 26 Z M 194 33 L 183 34 C 177 35 174 36 174 39 C 174 42 177 44 182 44 C 189 44 194 41 194 36 Z" fill="#ffffff" />
+    <g transform="translate(216, 0)">
+      <polygon points="0,1 12,1 46,49 34,49" fill="url(#sbLogoTeal)" />
+      <polygon points="46,1 34,1 0,49 12,49" fill="url(#sbLogoTeal)" />
+    </g>
+  </g>
+
+  <!-- Donji red: Crvena Tally lampica + STUDIOBRIDGE -->
+  <g transform="translate(0, 56)">
+    <!-- Crvena lampica -->
+    <circle cx="10" cy="15" r="9" fill="url(#sbLogoRed)" stroke="#ffffff" stroke-width="1.5" filter="url(#sbRedMiniGlow)" />
+    <circle cx="8" cy="12" r="3" fill="#ffffff" opacity="0.75" />
+    
+    <!-- STUDIOBRIDGE naslov -->
+    <text x="30" y="22" font-family="-apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, &#39;Courier New&#39;, monospace" font-size="21" font-weight="700" letter-spacing="4.5" fill="#e2e8f0">STUDIOBRIDGE</text>
+  </g>
+</svg>

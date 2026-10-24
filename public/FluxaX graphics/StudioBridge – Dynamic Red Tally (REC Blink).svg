@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" id="studiobridge-icon">
+  <defs>
+    <style>
+      /* Studijska pulsirajuća frekvencija (1 sekunda po ciklusu) */
+      @keyframes tallyBlink {
+        0%, 100% {
+          opacity: 0.25;
+          filter: drop-shadow(0 0 2px rgba(230, 0, 0, 0.4));
+        }
+        50% {
+          opacity: 1;
+          filter: drop-shadow(0 0 16px rgba(255, 30, 30, 0.95));
+        }
+      }
+
+      /* Klasa koja se aktivira na "Start Recording" */
+      .recording #tally-bulb {
+        animation: tallyBlink 1s infinite ease-in-out;
+      }
+      
+      /* Ako želiš da u SVG-u blinka non-stop kao samostalan element, 
+         samo obriši riječ '.recording ' ispred #tally-bulb */
+      #tally-bulb {
+        animation: tallyBlink 1s infinite ease-in-out;
+      }
+    </style>
+
+    <linearGradient id="sbDarkBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2d333b" />
+      <stop offset="100%" stop-color="#16191d" />
+    </linearGradient>
+
+    <linearGradient id="sbTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5ec2c0" />
+      <stop offset="100%" stop-color="#3ea8a6" />
+    </linearGradient>
+
+    <radialGradient id="sbRedTally" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ff7373" />
+      <stop offset="40%" stop-color="#e60000" />
+      <stop offset="100%" stop-color="#7a0000" />
+    </radialGradient>
+  </defs>
+
+  <!-- Baza ikone -->
+  <rect width="512" height="512" rx="115" ry="115" fill="url(#sbDarkBase)" stroke="#414952" stroke-width="3" />
+
+  <!-- Monogram FX (Statičan, čvrst) -->
+  <g id="monogram">
+    <path d="M 90 83 H 263 V 163 H 162 V 223 H 245 V 303 H 162 V 429 H 90 Z" fill="#ffffff" />
+    <polygon points="183,169 248,169 416,429 351,429" fill="url(#sbTeal)" />
+    <polygon points="412,169 347,169 153,429 218,429" fill="url(#sbTeal)" />
+  </g>
+
+  <!-- Ležište diode (prsten koji stoji uvijek fiksno) -->
+  <circle cx="399" cy="151" r="35" fill="none" stroke="#252a30" stroke-width="3" />
+
+  <!-- Dinamička Tally lampica koja blinka -->
+  <g id="tally-bulb">
+    <!-- Glavni izvor svjetla -->
+    <circle cx="399" cy="151" r="33" fill="url(#sbRedTally)" stroke="#ffffff" stroke-width="3.5" />
+    <!-- Analogni odsjaj stakla -->
+    <ellipse cx="391" cy="142" rx="10" ry="6" fill="#ffffff" opacity="0.75" />
+  </g>
+</svg>
