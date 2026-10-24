@@ -6,25 +6,40 @@ interface FluxaxNetLogoProps {
 }
 
 export default function FluxaxNetLogo({ className = "", size = "md" }: FluxaxNetLogoProps) {
-  const sizeClasses = {
-    sm: "text-lg",
-    md: "text-2xl",
-    lg: "text-3xl",
-    xl: "text-4xl",
+  const heightClasses = {
+    sm: "h-6",
+    md: "h-8 sm:h-9",
+    lg: "h-11 sm:h-12",
+    xl: "h-14 sm:h-16",
   };
 
   return (
-    <div className={`font-black tracking-tight select-none text-slate-900 flex items-center gap-0.5 ${sizeClasses[size] || "text-2xl"} ${className}`}>
-      <span>Fluxa</span>
-      <span className="text-teal-600">X</span>
+    <div className={`flex items-center gap-2 select-none ${className}`}>
+      <img
+        src="/FluxaX graphics/lockup-clienthub-light.svg"
+        alt="FluxaX Client HUB"
+        className={`${heightClasses[size] || "h-9"} w-auto object-contain`}
+      />
     </div>
   );
 }
 
-export function FluxaxAppIcon() {
+export function FluxaxAppIcon({ className = "" }: { className?: string }) {
   return (
-    <div className="w-8 h-8 rounded-lg bg-teal-600 text-white font-black flex items-center justify-center text-sm shadow-sm">
-      FX
-    </div>
+    <img
+      src="/FluxaX graphics/icon-clienthub.svg"
+      alt="Client HUB Icon"
+      className={`w-8 h-8 object-contain ${className}`}
+    />
+  );
+}
+
+export function FluxaxDynamicLiveStreamBadge({ className = "" }: { className?: string }) {
+  return (
+    <img
+      src="/FluxaX graphics/Client HUB – Dynamic Green Stream (Live Blink + Wave Pulse).svg"
+      alt="Live Stream Active"
+      className={`h-7 w-auto object-contain ${className}`}
+    />
   );
 }

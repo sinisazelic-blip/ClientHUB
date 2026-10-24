@@ -51,6 +51,9 @@ export default function ReceptionLobby({
   const [isBridgeOnline, setIsBridgeOnline] = useState<boolean>(true);
 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<"today" | "calendar">("today");
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(new Date().getDate());
+  const [calendarViewMode, setCalendarViewMode] = useState<"month" | "week">("month");
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -387,113 +390,288 @@ export default function ReceptionLobby({
           </div>
         </div>
 
-        {/* 3. AGENDA "DANAS" • POPIS SESIJA */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900">Danas • Raspored & Režija</h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-xs font-bold font-mono">
-                {sessions.length} {sessions.length === 1 ? "termin" : "termina"}
+        {/* 3. TABS: [ ☀️ DANAS RASPORED ] ⇄ [ 📅 KALENDAR STUDIJA ] */}
+        <div className="flex items-center justify-between border-b border-teal-200 pb-3">
+          <div className="flex items-center gap-2 bg-slate-200/60 p-1 rounded-2xl border border-teal-200/80">
+            <button
+              onClick={() => setActiveTab("today")}
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                activeTab === "today"
+                  ? "bg-teal-700 text-white shadow-md shadow-teal-900/10"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              }`}
+            >
+              <span>☀️</span>
+              <span>Danas Raspored</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === "today" ? "bg-teal-600 text-white" : "bg-teal-100 text-teal-800"}`}>
+                {sessions.length}
               </span>
-            </div>
+            </button>
 
             <button
-              onClick={() => setShowAddModal(true)}
-              className="text-xs font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
+              onClick={() => setActiveTab("calendar")}
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                activeTab === "calendar"
+                  ? "bg-teal-700 text-white shadow-md shadow-teal-900/10"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              }`}
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Dodaj još jedan termin</span>
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Kalendar Studija</span>
+              <span className="text-[10px] text-teal-600 font-mono font-bold">Oktobar 2026</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {sessions.map((sess) => {
-              const isActive = sess.id === activeSession?.id;
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-teal-600/20 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Novi Termin</span>
+          </button>
+        </div>
 
-              return (
-                <div
-                  key={sess.id}
-                  className={`rounded-2xl p-6 border transition-all flex flex-col justify-between ${
-                    isActive
-                      ? "bg-white border-teal-400 shadow-lg shadow-teal-950/10 ring-2 ring-teal-400/20"
-                      : "bg-white/85 border-teal-200/80 hover:border-teal-300 shadow-sm hover:shadow"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-teal-800 font-mono text-xs font-bold flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-teal-600" />
-                        {sess.time}
-                      </span>
+        {/* 4. CONTENT: DANAS LISTA VS. PUN KALENDAR STUDIJA */}
+        {activeTab === "today" ? (
+          /* DANAS AGENDA */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900">Današnji Termini za Režiju</h2>
+                <span className="text-xs text-slate-500 font-mono">({capitalizedDay}, {dateFormatted})</span>
+              </div>
+            </div>
 
-                      {/* Door Button / Badge in Card Header */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {sessions.map((sess) => {
+                const isActive = sess.id === activeSession?.id;
+
+                return (
+                  <div
+                    key={sess.id}
+                    className={`rounded-2xl p-6 border transition-all flex flex-col justify-between ${
+                      isActive
+                        ? "bg-white border-teal-400 shadow-lg shadow-teal-950/10 ring-2 ring-teal-400/20"
+                        : "bg-white/85 border-teal-200/80 hover:border-teal-300 shadow-sm hover:shadow"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-teal-800 font-mono text-xs font-bold flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-teal-600" />
+                          {sess.time}
+                        </span>
+
+                        {/* Door Button / Badge in Card Header */}
+                        <button
+                          onClick={(e) => handleToggleDoor(sess.id, sess.isDoorOpen, e)}
+                          title="Kliknite da otvorite ili zatvorite vrata studija za klijenta"
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border ${
+                            sess.isDoorOpen
+                              ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800"
+                              : "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800"
+                          }`}
+                        >
+                          {sess.isDoorOpen ? (
+                            <>
+                              <DoorOpen className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>VRATA OTVORENA</span>
+                            </>
+                          ) : (
+                            <>
+                              <DoorClosed className="w-3.5 h-3.5 text-amber-600" />
+                              <span>PRED VRATIMA</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <h3 className="text-base font-bold text-slate-900 mb-1.5 leading-snug">{sess.projectName}</h3>
+
+                      <div className="space-y-1.5 text-xs text-slate-600 mb-5">
+                        <div>
+                          Naručilac: <strong className="text-slate-900">{sess.clientName}</strong>
+                        </div>
+                        <div>
+                          Spiker: <strong className="text-teal-700">{sess.speakerName}</strong>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono">
+                            {sess.segments.length} segmenta
+                          </span>
+                          {sess.projectFiles && sess.projectFiles.length > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-teal-50 text-teal-700 font-mono font-bold">
+                              {sess.projectFiles.length} fajlova
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-teal-100 flex items-center gap-2">
                       <button
-                        onClick={(e) => handleToggleDoor(sess.id, sess.isDoorOpen, e)}
-                        title="Kliknite da otvorite ili zatvorite vrata studija za klijenta"
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border ${
-                          sess.isDoorOpen
-                            ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800"
-                            : "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800"
-                        }`}
+                        onClick={() => onEnterStudio(sess.id)}
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-teal-600/20"
                       >
-                        {sess.isDoorOpen ? (
-                          <>
-                            <DoorOpen className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>VRATA OTVORENA</span>
-                          </>
-                        ) : (
-                          <>
-                            <DoorClosed className="w-3.5 h-3.5 text-amber-600" />
-                            <span>PRED VRATIMA</span>
-                          </>
-                        )}
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>OTVORI REŽIJU</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleCopyLink(sess.id, "agency_tenant")}
+                        title="Kopiraj link za naručioca / agenciju"
+                        className="p-2.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-xs transition-all cursor-pointer shadow-sm"
+                      >
+                        {copiedId === sess.id ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                       </button>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* PUN INTERAKTIVNI KALENDAR MATRICA */
+          <div className="bg-white/95 border border-teal-200/80 rounded-3xl p-6 shadow-sm backdrop-blur-md space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-teal-100 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-teal-600" />
+                  <span>Kalendar Studija • Oktobar 2026.</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Kliknite na dan da filtrirate termine ili pređete direktno u režiju
+                </p>
+              </div>
 
-                    <h3 className="text-base font-bold text-slate-900 mb-1.5 leading-snug">{sess.projectName}</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium mr-2">Prikaz:</span>
+                <button
+                  onClick={() => setCalendarViewMode("month")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    calendarViewMode === "month" ? "bg-teal-600 text-white shadow-sm" : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  Mjesec
+                </button>
+                <button
+                  onClick={() => setCalendarViewMode("week")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    calendarViewMode === "week" ? "bg-teal-600 text-white shadow-sm" : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  Sedmica
+                </button>
+              </div>
+            </div>
 
-                    <div className="space-y-1.5 text-xs text-slate-600 mb-5">
-                      <div>
-                        Naručilac: <strong className="text-slate-900">{sess.clientName}</strong>
-                      </div>
-                      <div>
-                        Spiker: <strong className="text-teal-700">{sess.speakerName}</strong>
-                      </div>
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono">
-                          {sess.segments.length} segmenta
-                        </span>
-                        {sess.projectFiles && sess.projectFiles.length > 0 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-teal-50 text-teal-700 font-mono font-bold">
-                            {sess.projectFiles.length} fajlova
-                          </span>
-                        )}
-                      </div>
+            {/* Kalendar Dani u Sedmici Header */}
+            <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold uppercase tracking-wider text-slate-500 pb-2 border-b border-slate-100">
+              <div>Pon</div>
+              <div>Uto</div>
+              <div>Sri</div>
+              <div>Čet</div>
+              <div>Pet</div>
+              <div className="text-amber-700">Sub</div>
+              <div className="text-amber-700">Ned</div>
+            </div>
+
+            {/* Kalendar Grid Dani (1. do 31. oktobar) */}
+            <div className="grid grid-cols-7 gap-2">
+              {/* Dani: Oktobar 2026 pocinje u četvrtak (3 prazna polja: pon, uto, sri) */}
+              <div className="min-h-[90px] p-2 rounded-xl bg-slate-50/50 border border-transparent text-slate-300 text-xs font-mono">28</div>
+              <div className="min-h-[90px] p-2 rounded-xl bg-slate-50/50 border border-transparent text-slate-300 text-xs font-mono">29</div>
+              <div className="min-h-[90px] p-2 rounded-xl bg-slate-50/50 border border-transparent text-slate-300 text-xs font-mono">30</div>
+
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((dayNum) => {
+                const isToday = dayNum === currentTime.getDate();
+                const isSelected = dayNum === selectedCalendarDate;
+                // Dummy session distribution across calendar
+                const hasSessionToday = isToday;
+                const hasSessionPast = dayNum === 21 || dayNum === 22 || dayNum === 23;
+                const hasSessionFuture = dayNum === 26 || dayNum === 28;
+
+                return (
+                  <div
+                    key={dayNum}
+                    onClick={() => setSelectedCalendarDate(dayNum)}
+                    className={`min-h-[95px] p-2.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? "bg-teal-50/90 border-teal-500 ring-2 ring-teal-400/30 shadow-md"
+                        : isToday
+                        ? "bg-amber-50/70 border-amber-300 shadow-sm"
+                        : "bg-white hover:bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-mono font-bold ${isToday ? "px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow-xs" : isSelected ? "text-teal-900" : "text-slate-700"}`}>
+                        {dayNum}
+                      </span>
+                      {isToday && <span className="text-[9px] font-bold text-amber-700 uppercase">Danas</span>}
+                    </div>
+
+                    {/* Bedževi sesija u danu */}
+                    <div className="space-y-1 mt-1">
+                      {hasSessionToday && (
+                        <div className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-600 text-white truncate shadow-2xs">
+                          ● {sessions[0]?.projectName || "Snimanje"}
+                        </div>
+                      )}
+                      {hasSessionPast && (
+                        <div className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200 truncate">
+                          ✓ Arhivirano
+                        </div>
+                      )}
+                      {hasSessionFuture && (
+                        <div className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 truncate">
+                          ⏱️ Zakazano
+                        </div>
+                      )}
                     </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  <div className="pt-4 border-t border-teal-100 flex items-center gap-2">
-                    <button
-                      onClick={() => onEnterStudio(sess.id)}
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-teal-600/20"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>OTVORI REŽIJU</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleCopyLink(sess.id, "agency_tenant")}
-                      title="Kopiraj link za naručioca / agenciju"
-                      className="p-2.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-xs transition-all cursor-pointer shadow-sm"
-                    >
-                      {copiedId === sess.id ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
+            {/* Selected Day Details Panel */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-600 text-white font-mono font-bold text-base flex items-center justify-center shadow-sm">
+                  {selectedCalendarDate}
                 </div>
-              );
-            })}
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Termini za {selectedCalendarDate}. Oktobar 2026.
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {selectedCalendarDate === currentTime.getDate()
+                      ? `Danas u studiju aktivno ${sessions.length} termina`
+                      : "Raspored rezervacija za odabrani datum"}
+                  </p>
+                </div>
+              </div>
+
+              {selectedCalendarDate === currentTime.getDate() ? (
+                <button
+                  onClick={() => {
+                    if (sessions.length > 0) onEnterStudio(sessions[0].id);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>OTVORI DANAŠNJU REŽIJU</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold cursor-pointer"
+                >
+                  + Zakaži termin na ovaj dan
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Modal: Zakaži Novi Termin */}
         {showAddModal && (

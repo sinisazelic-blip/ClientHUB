@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import FluxaxNetLogo from "@/components/FluxaxNetLogo";
+import FluxaxNetLogo, { FluxaxDynamicLiveStreamBadge } from "@/components/FluxaxNetLogo";
 import ReceptionLobby from "@/components/ReceptionLobby";
 import StudioDirectorConsole from "@/components/StudioDirectorConsole";
 import { ClaHardwareConsole } from "@/components/ClaHardwareConsole";
@@ -235,59 +235,65 @@ export default function ClientHubPage() {
 
   return (
     <div className="min-h-screen studio-light-bg text-slate-800 flex flex-col font-sans">
-      {/* GLOBAL ROLE SWITCHER BAR */}
-      <div className="bg-white/90 border-b border-teal-200/80 px-6 py-2 flex items-center justify-between text-xs z-50 backdrop-blur-sm shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
-            Režim Prikaza:
-          </span>
-          <div className="inline-flex bg-teal-50/80 p-0.5 rounded-lg border border-teal-200">
-            {/* STUDIO BUTTON: NEVER FORCES EXIT IF ACTIVE SESSION EXISTS */}
-            <button
-              onClick={() => {
-                setCurrentRole("studio_director");
-                if (activeSession) {
-                  setIsInStudio(true);
-                }
-              }}
-              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                currentRole === "studio_director"
-                  ? "bg-teal-700 text-white shadow-sm"
-                  : "text-slate-600 hover:text-teal-900"
-              }`}
-            >
-              Studio (Režija)
-            </button>
-            <button
-              onClick={() => setCurrentRole("agency_tenant")}
-              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                currentRole === "agency_tenant"
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-teal-900"
-              }`}
-            >
-              Naručilac (Agencija)
-            </button>
-            <button
-              onClick={() => setCurrentRole("guest_participant")}
-              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                currentRole === "guest_participant"
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-teal-900"
-              }`}
-            >
-              Klijent (Gost)
-            </button>
+      {/* GLOBAL ROLE SWITCHER BAR WITH OFFICIAL FLUXAX CLIENT HUB BRANDING */}
+      <div className="bg-white/95 border-b border-teal-200/80 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs z-50 backdrop-blur-md shadow-sm">
+        <div className="flex items-center gap-4">
+          <FluxaxNetLogo size="sm" />
+
+          <div className="hidden sm:flex items-center gap-2 border-l border-teal-200 pl-4">
+            <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
+              Režim Prikaza:
+            </span>
+            <div className="inline-flex bg-teal-50/80 p-0.5 rounded-lg border border-teal-200">
+              {/* STUDIO BUTTON: NEVER FORCES EXIT IF ACTIVE SESSION EXISTS */}
+              <button
+                onClick={() => {
+                  setCurrentRole("studio_director");
+                  if (activeSession) {
+                    setIsInStudio(true);
+                  }
+                }}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  currentRole === "studio_director"
+                    ? "bg-teal-700 text-white shadow-sm"
+                    : "text-slate-600 hover:text-teal-900"
+                }`}
+              >
+                Studio (Režija)
+              </button>
+              <button
+                onClick={() => setCurrentRole("agency_tenant")}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  currentRole === "agency_tenant"
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-teal-900"
+                }`}
+              >
+                Naručilac (Agencija)
+              </button>
+              <button
+                onClick={() => setCurrentRole("guest_participant")}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  currentRole === "guest_participant"
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-teal-900"
+                }`}
+              >
+                Klijent (Gost)
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="text-[11px] text-teal-800 font-mono font-semibold flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>FluxaX Net Client HUB</span>
-          <span className="px-2 py-0.5 rounded bg-teal-100/90 text-teal-900 border border-teal-300 font-bold font-mono text-[10px]">
-            Build {APP_CONFIG.build}
-          </span>
-          <span className="text-slate-400">• Port 1991</span>
+        <div className="flex items-center gap-3">
+          <FluxaxDynamicLiveStreamBadge className="hidden md:block" />
+          <div className="text-[11px] text-teal-900 font-mono font-semibold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="hidden sm:inline">Client HUB</span>
+            <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-300 font-bold font-mono text-[10px]">
+              v{APP_CONFIG.version}
+            </span>
+          </div>
         </div>
       </div>
 
