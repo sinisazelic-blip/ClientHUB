@@ -251,6 +251,9 @@ export default function ClientHubPage() {
                   setCurrentRole("studio_director");
                   if (activeSession) {
                     setIsInStudio(true);
+                  } else if (sessions.length > 0) {
+                    setActiveSession(sessions[0]);
+                    setIsInStudio(true);
                   }
                 }}
                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${

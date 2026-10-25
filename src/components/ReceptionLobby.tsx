@@ -24,6 +24,35 @@ import FluxaxNetLogo from "@/components/FluxaxNetLogo";
 import { SessionItem } from "@/app/api/studio/status/route";
 import { format24Time } from "@/lib/formatTime";
 
+function LobbyWaitingVideo() {
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  const handleEnded = () => {
+    // Video ended (10s playback completed). Hold last frame for 15 seconds, then replay.
+    const timer = setTimeout(() => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(() => {});
+      }
+    }, 15000);
+    return () => clearTimeout(timer);
+  };
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-teal-200 shadow-md max-w-sm mx-auto bg-black">
+      <video
+        ref={videoRef}
+        src="/branding/FluxaX press 1.mp4"
+        autoPlay
+        muted
+        playsInline
+        onEnded={handleEnded}
+        className="w-full h-auto object-contain block"
+      />
+    </div>
+  );
+}
+
 interface ReceptionLobbyProps {
   role: "studio_director" | "agency_tenant" | "guest_participant";
   studioName?: string;
@@ -89,26 +118,32 @@ export default function ReceptionLobby({
   };
 
   const handleCreateSession = async () => {
-    if (!newProjectName.trim()) return;
+    const finalProjectName = newProjectName.trim() || `Termin Snimanja ${newTime}`;
     try {
-      await fetch("/api/studio/status", {
+      const res = await fetch("/api/studio/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "CREATE_SESSION",
-          projectName: newProjectName,
+          projectName: finalProjectName,
           clientName: newClientName || "Agencija",
           speakerName: newSpeakerName || "Spiker",
           date: newDate,
           time: newTime,
         }),
       });
+      const data = await res.json();
       setShowAddModal(false);
       setNewProjectName("");
       setNewClientName("");
       setNewSpeakerName("");
-      onRefreshSessions();
-    } catch (_) {}
+      await onRefreshSessions();
+      if (data.session?.id) {
+        onEnterStudio(data.session.id);
+      }
+    } catch (err) {
+      console.error("Create session error:", err);
+    }
   };
 
   const openAddModalForHour = (hour: number) => {
@@ -246,17 +281,8 @@ export default function ReceptionLobby({
                 Režija postavlja scenario i nivoe signala. Čim tonac otvori vrata, ulazite u studio.
               </p>
 
-              {/* Animated ClientHUB Video Preview */}
-              <div className="rounded-xl overflow-hidden border border-teal-200 shadow-sm max-w-sm mx-auto bg-black">
-                <video
-                  src="/branding/ClientHUB animation.mp4"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className="w-full h-auto object-contain"
-                />
-              </div>
+              {/* Animated FluxaX press 1 (10s playback + 15s hold on last frame loop) */}
+              <LobbyWaitingVideo />
 
               <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-teal-200 font-mono text-xl font-bold text-teal-800 shadow-sm">
                 <Clock className="w-5 h-5 text-teal-600" />
@@ -321,6 +347,18 @@ export default function ReceptionLobby({
                 </div>
               </div>
             </div>
+
+            {/* Direct Enter Studio Button if Active Session Exists */}
+            {activeSession && (
+              <button
+                onClick={() => onEnterStudio(activeSession.id)}
+                className="py-3 px-5 rounded-2xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs tracking-wide shadow-md shadow-teal-950/20 transition-all cursor-pointer flex items-center gap-2"
+                title="Ulazak direktno u režijski pult aktivnog termina"
+              >
+                <Sliders className="w-4 h-4 text-teal-300" />
+                <span>Uđi u Režiju ({activeSession.projectName})</span>
+              </button>
+            )}
 
             {/* Single Unified "Novi Termin" Button */}
             <button
@@ -587,12 +625,36 @@ export default function ReceptionLobby({
 
       {/* MODAL: NOVI TERMIN (ZAKAŽI SESIJU) */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-teal-200 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-teal-600" />
-              <span>Zakaži Novi Termin</span>
-            </h3>
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddModal(false);
+          }}
+        >
+          <div
+            className="bg-white border border-teal-200 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-fadeIn"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleCreateSession();
+              } else if (e.key === "Escape") {
+                setShowAddModal(false);
+              }
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-teal-600" />
+                <span>Zakaži Novi Termin</span>
+              </h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+                title="Zatvori (Esc)"
+              >
+                ✕
+              </button>
+            </div>
             <p className="text-xs text-slate-500">
               Unesite podatke projekta i termina za režiju, naručioca i spikera.
             </p>
@@ -665,7 +727,7 @@ export default function ReceptionLobby({
                 onClick={handleCreateSession}
                 className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md shadow-teal-600/20 cursor-pointer"
               >
-                Kreiraj Termin
+                Kreiraj Termin i Uđi
               </button>
             </div>
           </div>

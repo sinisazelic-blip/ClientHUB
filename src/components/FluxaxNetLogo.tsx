@@ -6,65 +6,31 @@ interface FluxaxNetLogoProps {
 }
 
 export default function FluxaxNetLogo({ className = "", size = "md" }: FluxaxNetLogoProps) {
-  const jewelSizes = {
-    sm: "w-3.5 h-3.5",
-    md: "w-4 h-4",
-    lg: "w-5 h-5",
-    xl: "w-6 h-6",
-  };
-
-  const textSizes = {
-    sm: "text-sm",
-    md: "text-base",
-    lg: "text-xl",
-    xl: "text-2xl",
+  const logoHeights = {
+    sm: "h-7",
+    md: "h-8",
+    lg: "h-10",
+    xl: "h-12",
   };
 
   return (
-    <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      {/* AUTHENTIC STUDIO VINTAGE PILOT LAMP (JEWEL INDICATOR) */}
-      <div
-        className={`${jewelSizes[size]} rounded-full relative flex items-center justify-center shrink-0`}
-        style={{
-          background: "radial-gradient(circle at 35% 35%, #ff4d4d 0%, #dc2626 45%, #991b1b 75%, #450a0a 100%)",
-          border: "1.5px solid #1a0505",
-          boxShadow: "0 0 10px rgba(239, 68, 68, 0.85), inset 0 1px 2px rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0,0,0,0.4)",
-        }}
-        title="Client HUB • Studio Online"
-      >
-        <div
-          className="w-full h-full rounded-full"
-          style={{
-            background: "radial-gradient(circle at 35% 25%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 50%)",
-          }}
-        />
-      </div>
-
-      {/* CLEAN TYPOGRAPHY: Client HUB */}
-      <div className="flex items-baseline gap-1.5 leading-none">
-        <span className={`font-black tracking-tight text-slate-900 ${textSizes[size]}`}>
-          Client <span className="text-teal-700">HUB</span>
-        </span>
-      </div>
+    <div className={`flex items-center select-none ${className}`}>
+      <img
+        src="/branding/CH logo.png"
+        alt="FluxaX Client HUB"
+        className={`${logoHeights[size]} w-auto object-contain block`}
+      />
     </div>
   );
 }
 
 export function FluxaxAppIcon({ className = "" }: { className?: string }) {
   return (
-    <div
-      className={`w-8 h-8 rounded-full relative flex items-center justify-center ${className}`}
-      style={{
-        background: "radial-gradient(circle at 35% 35%, #ff4d4d 0%, #dc2626 45%, #991b1b 75%, #450a0a 100%)",
-        border: "2px solid #1a0505",
-        boxShadow: "0 0 12px rgba(239, 68, 68, 0.9), inset 0 1px 2px rgba(255, 255, 255, 0.8)",
-      }}
-    >
-      <div
-        className="w-full h-full rounded-full"
-        style={{
-          background: "radial-gradient(circle at 35% 25%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 50%)",
-        }}
+    <div className={`flex items-center justify-center select-none ${className}`}>
+      <img
+        src="/branding/CH icon.png"
+        alt="Client HUB Icon"
+        className="w-8 h-8 object-contain rounded-full shadow-sm"
       />
     </div>
   );

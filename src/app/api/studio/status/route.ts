@@ -399,7 +399,8 @@ export async function POST(req: Request) {
         ],
       };
       sessionsList.push(newSession);
-      return NextResponse.json({ success: true, session: newSession });
+      activeSessionId = newSession.id;
+      return NextResponse.json({ success: true, session: newSession, activeSessionId: newSession.id });
     }
 
     return NextResponse.json({ success: true });

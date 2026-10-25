@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: "FluxaX Client HUB",
   description: "FluxaX Net Client HUB • Ultra-Low Latency Broadcast & Remote VO / Video Screening",
   icons: {
-    icon: "/FluxaX graphics/icon-clienthub.svg",
-    shortcut: "/FluxaX graphics/icon-clienthub.svg",
-    apple: "/FluxaX graphics/icon-clienthub.svg",
+    icon: "/branding/CH icon.png",
+    shortcut: "/branding/CH icon.png",
+    apple: "/branding/CH icon.png",
   },
 };
 
