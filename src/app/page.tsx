@@ -267,7 +267,7 @@ export default function ClientHubPage() {
     if (!newChatText.trim()) return;
     const sender =
       currentRole === "studio_director"
-        ? "Režija"
+        ? "Studio"
         : currentRole === "agency_tenant"
         ? "Naručilac"
         : "Klijent";
@@ -336,7 +336,7 @@ export default function ClientHubPage() {
                     : "text-slate-600 hover:text-teal-900"
                 }`}
               >
-                Studio (Režija)
+                Studio
               </button>
               <button
                 onClick={() => setCurrentRole("agency_tenant")}
@@ -366,7 +366,6 @@ export default function ClientHubPage() {
           <FluxaxDynamicLiveStreamBadge className="hidden md:block" />
           <div className="text-[11px] text-teal-900 font-mono font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="hidden sm:inline">Client HUB</span>
             <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-300 font-bold font-mono text-[10px]">
               v{APP_CONFIG.version}
             </span>

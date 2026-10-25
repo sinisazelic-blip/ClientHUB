@@ -394,87 +394,10 @@ export default function StudioDirectorConsole({
           TOP MASTER CONTROL BAR (Light Studio Header)
       ========================================================================= */}
       <header className="bg-white/95 border-b border-teal-200/80 px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 shadow-sm backdrop-blur-md">
-        <div className="flex flex-col gap-2 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-black text-slate-900 leading-tight">
-              {session.projectName}
-            </span>
-            <span className="text-[10px] text-teal-800 font-mono px-2 py-0.5 rounded bg-teal-100/80 border border-teal-300 font-bold">
-              REŽIJA
-            </span>
-            <span className="text-[10px] text-teal-700 font-mono px-2 py-0.5 rounded bg-teal-50 border border-teal-200 font-bold" title="Aktivni build Client HUB-a">
-              Build {APP_CONFIG.build}
-            </span>
-            <span className="text-xs text-slate-500 font-medium ml-1">
-              Spiker: <strong className="text-teal-700">{session.speakerName}</strong>
-            </span>
-          </div>
-
-          {/* SEQUENTIAL ATTENDEES IN HEADER: Studio -> Naručilac -> Klijenti (Wrap cleanly, NO black bar) */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            {/* 1. Studio Režija */}
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-amber-50/80 border-amber-300 text-amber-950 text-xs shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="font-bold text-[11px]">Režija (Tonac)</span>
-            </div>
-
-            {/* 2. Naručilac */}
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-purple-50/80 border-purple-300 text-purple-950 text-xs shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-purple-600" />
-              <span className="text-[10px] text-purple-700 font-semibold uppercase">Naručilac:</span>
-              <span className="font-bold text-[11px]">{session.clientName}</span>
-            </div>
-
-            {/* 3. Klijenti / Gosti (Ordered sequentially, wrapping smoothly) */}
-            {attendees
-              .filter((att) => att.role !== "studio_director")
-              .map((att) => {
-                const isAgency = att.role === "agency_tenant";
-                const isSpeaker = att.role === "speaker";
-
-                return (
-                  <div
-                    key={att.id}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all text-xs shadow-2xs ${
-                      att.isSpeaking
-                        ? "bg-teal-100/90 border-teal-500 ring-1 ring-teal-400"
-                        : "bg-white border-slate-200 hover:border-slate-300 text-slate-800"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] ${
-                        isSpeaker
-                          ? "bg-teal-600 text-white"
-                          : isAgency
-                          ? "bg-purple-600 text-white"
-                          : "bg-slate-700 text-white"
-                      }`}
-                    >
-                      {att.name.charAt(0)}
-                    </div>
-
-                    <div className="flex items-center gap-1 leading-tight">
-                      <span className="font-bold text-[11px] text-slate-800">{att.name}</span>
-                      <span className="text-[9px] text-slate-500 font-mono">
-                        ({att.company || (isSpeaker ? "Glumac" : "Gost")})
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggleAttendeeMute(att.id, att.isMuted)}
-                      title={att.isMuted ? "Uključi mikrofon učesnika" : "Privremeno utišaj učesnika"}
-                      className={`p-0.5 rounded transition-colors cursor-pointer ml-0.5 ${
-                        att.isMuted
-                          ? "bg-red-100 text-red-600 hover:bg-red-200"
-                          : "text-slate-400 hover:text-slate-700"
-                      }`}
-                    >
-                      {att.isMuted ? <MicOff className="w-3 h-3 text-red-500" /> : <Mic className="w-3 h-3" />}
-                    </button>
-                  </div>
-                );
-              })}
-          </div>
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-black text-slate-900 leading-tight">
+            {session.projectName}
+          </h2>
         </div>
 
         {/* Action Controls in Topbar */}
@@ -557,24 +480,26 @@ export default function StudioDirectorConsole({
             <span>{isDoorOpen ? "VRATA OTVORENA" : "PRED VRATIMA"}</span>
           </button>
 
-          {/* Explicit Napusti Režiju / Završi Sesiju Button with Safe Modal */}
+          {/* Explicit Napusti Studio / Završi Sesiju Button with Safe Modal */}
           <button
             onClick={() => setShowExitConfirm(true)}
-            title="Napusti režiju i vrati se u kalendar termina"
+            title="Napusti studio i vrati se u kalendar termina"
             className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-300"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Napusti Režiju</span>
+            <span>Napusti Studio</span>
           </button>
         </div>
       </header>
 
       {/* =========================================================================
-          MAIN WORKSPACE: UNIFIED DIRECTOR CONSOLE WITH COMPACT INFORMATIVE VIDEO
+          MAIN WORKSPACE: FULL WIDTH WITH RIGHT VERTICAL PARTICIPANTS SIDEBAR
       ========================================================================= */}
-      <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+      <main className="flex-1 p-4 sm:p-6 w-full flex flex-col xl:flex-row gap-5 items-start">
+        {/* LEFT / CENTER: MAIN STUDIO WORKSPACE */}
+        <div className="flex-1 min-w-0 space-y-5 w-full">
 
-        {/* TOP ROW: MASTER VU + RME MONITORING + INFORMATIVE VIDEO MONITOR */}
+        {/* TOP ROW: MASTER VU + AUDIO INTERFACE + INFORMATIVE VIDEO MONITOR */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
           
           {/* 1. MASTER STREAM VU-METER & TALKBACK (Col 5) */}
@@ -666,13 +591,13 @@ export default function StudioDirectorConsole({
             </div>
           </div>
 
-          {/* 2. RME PRESLUŠAVANJE / IZLAZI (Col 3) */}
+          {/* 2. AUDIO INTERFEJS / HARDWARE IZLAZI (Col 3) */}
           <div className="lg:col-span-3 bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <Sliders className="w-4 h-4 text-teal-600" />
                 <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  RME Izlazi
+                  Audio Interfejs Izlazi
                 </span>
               </div>
             </div>
@@ -681,8 +606,8 @@ export default function StudioDirectorConsole({
               <div>
                 <div className="flex justify-between items-center text-xs mb-1 font-medium">
                   <div className="flex items-center gap-1">
-                    <span className="text-slate-700 text-[11px]">Režija (CR):</span>
-                    <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-600 font-bold">7/8</span>
+                    <span className="text-slate-700 text-[11px]">Studio (CR):</span>
+                    <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-600 font-bold">1/2</span>
                   </div>
                   <span className="font-mono text-teal-700 font-bold text-xs">{volCR}%</span>
                 </div>
@@ -763,14 +688,23 @@ export default function StudioDirectorConsole({
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="text-center p-3 space-y-1">
-                  <Tv className="w-6 h-6 text-purple-400 mx-auto opacity-70" />
-                  <p className="text-[11px] font-semibold text-slate-300">
-                    DaVinci / Premiere preview
-                  </p>
-                  <p className="text-[9px] text-slate-500 max-w-xs">
-                    Informativni thumbnail za provjeru sinhronizacije
-                  </p>
+                <div className="w-full h-full relative flex items-center justify-center">
+                  <video
+                    src="/branding/FluxaX animation red.mp4"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="w-full h-full object-cover opacity-85"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2.5">
+                    <p className="text-[11px] font-bold text-white leading-tight">
+                      DaVinci / Premiere preview
+                    </p>
+                    <p className="text-[9px] text-slate-300">
+                      Čeka se dijeljenje montaže
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -996,11 +930,149 @@ export default function StudioDirectorConsole({
             ))}
           </div>
         </div>
+        </div>
 
+        {/* RIGHT: DEDICATED VERTICAL PARTICIPANTS COLUMN (GOOGLE MEET / ZOOM STYLE) */}
+        <aside className="w-full xl:w-80 shrink-0 bg-white border border-teal-200/80 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+          <div className="flex items-center justify-between border-b border-teal-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-teal-600" />
+              <span className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                Učesnici u Snimanju
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 font-mono text-[10px] font-bold">
+              {attendees.length}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {/* 1. Studio (Tonac) */}
+            <div
+              className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
+                talkbackOn
+                  ? "bg-amber-50/90 border-amber-400 ring-2 ring-amber-400/50 shadow-sm"
+                  : "bg-slate-50 border-slate-200 text-slate-800"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full bg-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                    S
+                  </div>
+                  {talkbackOn && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-amber-500 border-2 border-white rounded-full animate-pulse" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-slate-900">Studio</span>
+                    <span className="text-[10px] font-mono px-1 rounded bg-amber-100 text-amber-900 font-semibold">Tonac</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-mono">Glavni pult</span>
+                </div>
+              </div>
+
+              {/* Speaking indicator / Audio bars */}
+              {talkbackOn ? (
+                <div className="flex items-center gap-0.5" title="Studio govori">
+                  <span className="w-1 h-3 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1 h-4 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-slate-300" />
+              )}
+            </div>
+
+            {/* 2. Ostali učesnici: Naručilac, Spiker, Klijenti */}
+            {attendees
+              .filter((att) => att.role !== "studio_director")
+              .map((att) => {
+                const isAgency = att.role === "agency_tenant";
+                const isSpeaker = att.role === "speaker";
+                const isSpeaking = att.isSpeaking || (isAgency && roleTalkbacks.agency_tenant) || (!isAgency && !isSpeaker && roleTalkbacks.guest_participant);
+
+                return (
+                  <div
+                    key={att.id}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
+                      isSpeaking
+                        ? "bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/50 shadow-sm shadow-emerald-500/10"
+                        : "bg-slate-50/60 border-slate-200 text-slate-800 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative">
+                        <div
+                          className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center text-white shadow-xs ${
+                            isSpeaker
+                              ? "bg-teal-600"
+                              : isAgency
+                              ? "bg-purple-600"
+                              : "bg-slate-700"
+                          }`}
+                        >
+                          {att.name.charAt(0)}
+                        </div>
+                        {isSpeaking && (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse" />
+                        )}
+                      </div>
+
+                      <div className="leading-tight">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs text-slate-900">{att.name}</span>
+                          <span
+                            className={`text-[9px] font-mono px-1 rounded font-semibold ${
+                              isSpeaker
+                                ? "bg-teal-100 text-teal-800"
+                                : isAgency
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {isSpeaker ? "Spiker" : isAgency ? "Naručilac" : "Klijent"}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                          {att.company || (isSpeaker ? "Glumačka soba" : "Online")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Active audio speaking bars (Zoom / Teams / Meet style) */}
+                      {isSpeaking && (
+                        <div className="flex items-center gap-0.5" title="Učesnik govori...">
+                          <span className="w-1 h-3.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <span className="w-1 h-4 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <span className="w-1 h-2.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </div>
+                      )}
+
+                      {/* Mute / Unmute Button */}
+                      <button
+                        onClick={() => handleToggleAttendeeMute(att.id, att.isMuted)}
+                        title={att.isMuted ? "Uključi mikrofon učesnika" : "Privremeno utišaj učesnika"}
+                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                          att.isMuted
+                            ? "bg-red-100 text-red-600 hover:bg-red-200"
+                            : "bg-white border border-slate-200 text-slate-400 hover:text-slate-700"
+                        }`}
+                      >
+                        {att.isMuted ? <MicOff className="w-3.5 h-3.5 text-red-500" /> : <Mic className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </aside>
       </main>
 
       {/* =========================================================================
-          EXIT REŽIJA CONFIRMATION MODAL
+          EXIT STUDIO CONFIRMATION MODAL
       ========================================================================= */}
       {showExitConfirm && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1009,11 +1081,11 @@ export default function StudioDirectorConsole({
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-slate-900">Napustiti Režiju?</h3>
+              <h3 className="text-base font-bold text-slate-900">Napustiti Studio?</h3>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Da li ste sigurni da želite napustiti kontrolnu sobu i vratiti se u raspored termina?  
+              Da li ste sigurni da želite napustiti studio i vratiti se u raspored termina?  
               Sesija i snimljeni tejkovi ostaju bezbjedno sačuvani u bazi.
             </p>
 
@@ -1022,7 +1094,7 @@ export default function StudioDirectorConsole({
                 onClick={() => setShowExitConfirm(false)}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
               >
-                Ostani u Režiji
+                Ostani u Studiju
               </button>
               <button
                 onClick={() => {
