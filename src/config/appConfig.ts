@@ -1,8 +1,8 @@
 export const APP_CONFIG = {
   name: "Studio TAF",
   fullName: "Studio TAF • A Member of Fluxa Group",
-  version: "1.0.10",
-  build: "v1.0.10",
+  version: "1.0.11",
+  build: "v1.0.11",
   phone: "+387 (0) 51 456 456",
   email: "info@studiotaf.ba",
   portalUrl: "/client-portal",

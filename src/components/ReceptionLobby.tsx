@@ -321,31 +321,34 @@ export default function ReceptionLobby({
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* 1. TOP HEADER & ELEGANT STUDIO-LIGHT DIGITAL CLOCK */}
-        <div className="bg-white/95 border border-teal-200/80 rounded-3xl p-6 shadow-sm backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-3 py-0.5 rounded-full bg-teal-100/90 text-teal-900 border border-teal-300 text-[11px] font-bold uppercase tracking-wider shadow-xs">
-                Raspored Studija
-              </span>
-              <div
-                title="Veza sa lokalnim StudioBridge hardverom"
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
-                  isBridgeOnline ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-100 text-slate-600 border-slate-300"
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${isBridgeOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-                <span>{isBridgeOnline ? "StudioBridge Online" : "StudioBridge Offline"}</span>
+        <div className="bg-white/95 border border-teal-200/80 rounded-3xl p-6 shadow-sm backdrop-blur-md flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <FluxaxNetLogo size="lg" />
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="px-3 py-0.5 rounded-full bg-teal-100/90 text-teal-900 border border-teal-300 text-[11px] font-bold uppercase tracking-wider shadow-xs">
+                  Raspored Studija
+                </span>
+                <div
+                  title="Veza sa lokalnim StudioBridge hardverom"
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                    isBridgeOnline ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-100 text-slate-600 border-slate-300"
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isBridgeOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                  <span>{isBridgeOnline ? "StudioBridge Online" : "StudioBridge Offline"}</span>
+                </div>
               </div>
+              <h1 className="text-xl md:text-2xl font-black text-slate-900">
+                {studioName || "Studio TAF • Režijski Kalendar"}
+              </h1>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Odaberite dan u kalendaru i kliknite na rezervisani termin za ulazak u režiju
+              </p>
             </div>
-            <h1 className="text-xl md:text-2xl font-black text-slate-900">
-              {studioName || "Studio TAF • Režijski Kalendar"}
-            </h1>
-            <p className="text-xs text-slate-600 mt-0.5">
-              Odaberite dan u kalendaru i kliknite na rezervisani termin za ulazak u režiju
-            </p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Elegant Studio-Light Integrated Clock */}
             <div className="bg-white border border-teal-300/80 text-slate-900 rounded-2xl px-5 py-3 shadow-sm flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shadow-inner">
@@ -361,17 +364,18 @@ export default function ReceptionLobby({
               </div>
             </div>
 
-            {/* Direct Enter Studio Button if Active Session Exists */}
-            {activeSession && (
-              <button
-                onClick={() => onEnterStudio(activeSession.id)}
-                className="py-3 px-5 rounded-2xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs tracking-wide shadow-md shadow-teal-950/20 transition-all cursor-pointer flex items-center gap-2"
-                title="Ulazak direktno u režijski pult aktivnog termina"
-              >
-                <Sliders className="w-4 h-4 text-teal-300" />
-                <span>Uđi u Režiju ({activeSession.projectName})</span>
-              </button>
-            )}
+            {/* Direct Enter Studio Button (Always accessible) */}
+            <button
+              onClick={() => {
+                const targetId = activeSession?.id || (sessions.length > 0 ? sessions[0].id : "taf-coca-cola-2026");
+                onEnterStudio(targetId);
+              }}
+              className="py-3 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-md shadow-slate-900/20 transition-all cursor-pointer flex items-center gap-2 border border-slate-700"
+              title="Ulazak direktno u režijski pult i mikser studija"
+            >
+              <Sliders className="w-4 h-4 text-teal-300" />
+              <span>Uđi u Režiju {activeSession ? `(${activeSession.projectName})` : ""}</span>
+            </button>
 
             {/* Single Unified "Novi Termin" Button */}
             <button
