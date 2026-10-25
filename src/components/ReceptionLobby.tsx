@@ -119,6 +119,7 @@ export default function ReceptionLobby({
 
   const handleCreateSession = async () => {
     const finalProjectName = newProjectName.trim() || `Termin Snimanja ${newTime}`;
+    setShowAddModal(false);
     try {
       const res = await fetch("/api/studio/status", {
         method: "POST",
@@ -133,14 +134,13 @@ export default function ReceptionLobby({
         }),
       });
       const data = await res.json();
-      setShowAddModal(false);
       setNewProjectName("");
       setNewClientName("");
       setNewSpeakerName("");
-      await onRefreshSessions();
       if (data.session?.id) {
         onEnterStudio(data.session.id);
       }
+      onRefreshSessions();
     } catch (err) {
       console.error("Create session error:", err);
     }
@@ -643,7 +643,7 @@ export default function ReceptionLobby({
       {/* MODAL: NOVI TERMIN (ZAKAŽI SESIJU) */}
       {showAddModal && (
         <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999999] flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowAddModal(false);
           }}

@@ -35,14 +35,81 @@ import { APP_CONFIG } from "@/config/appConfig";
 
 type UserRole = "agency_tenant" | "guest_participant" | "studio_director";
 
+const INITIAL_SESSIONS: SessionItem[] = [
+  {
+    id: "taf-coca-cola-2026",
+    projectName: "Coca-Cola (Ljetna kampanja 2026)",
+    clientName: "Saatchi & Saatchi / Media Focus",
+    speakerName: "Goran (Glavni glas)",
+    date: new Date().toISOString().split("T")[0],
+    time: "14:00",
+    isDoorOpen: true,
+    isOnAir: false,
+    videoEnabled: false,
+    focusMode: "audio",
+    recStartTime: null,
+    fluxaDownloadUrl: "https://drive.google.com/drive/folders/fluxa-taf-coca-cola-final",
+    billing: {
+      status: "active",
+      startedAt: Date.now() - 25 * 60 * 1000,
+      totalElapsedSeconds: 1500,
+      hourlyRateEur: 75,
+    },
+    attendees: [
+      { id: "att-dir", name: "Režija (Siniša)", role: "studio_director", company: "Studio TAF", isMuted: false, isSpeaking: false },
+      { id: "att-spk", name: "Goran (Spiker)", role: "speaker", company: "Glumačka soba", isMuted: false, isSpeaking: true },
+      { id: "att-naru", name: "Saatchi & Saatchi", role: "agency_tenant", company: "Naručilac", isMuted: false, isSpeaking: false },
+    ],
+    projectFiles: [],
+    segments: [
+      {
+        id: "seg-1",
+        title: "Intro (Početak spot 1)",
+        text: "Zaboravite sve što ste mislili o kompromisima. Nova sezona donosi više stila i neponovljivu energiju u svakom gutljaju.",
+        targetDuration: "00:00 - 00:10",
+        takes: [
+          { id: 1, name: "Tejk 1 (Toplo)", status: "alt" },
+          { id: 2, name: "Tejk 2 (Dinamično)", status: "final" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "taf-intesa-radio",
+    projectName: "Banka Intesa (Radio Džingl 2x30s)",
+    clientName: "McCann Beograd",
+    speakerName: "Jelena (Ženski vokal)",
+    date: new Date().toISOString().split("T")[0],
+    time: "18:00",
+    isDoorOpen: false,
+    isOnAir: false,
+    videoEnabled: false,
+    focusMode: "audio",
+    recStartTime: null,
+    fluxaDownloadUrl: "https://drive.google.com/drive/folders/fluxa-taf-intesa",
+    billing: {
+      status: "idle",
+      startedAt: null,
+      totalElapsedSeconds: 0,
+      hourlyRateEur: 75,
+    },
+    attendees: [
+      { id: "att-dir2", name: "Režija", role: "studio_director", company: "Studio TAF", isMuted: false, isSpeaking: false },
+      { id: "att-spk2", name: "Jelena (Spiker)", role: "speaker", company: "Glumačka soba", isMuted: false, isSpeaking: false },
+    ],
+    projectFiles: [],
+    segments: [],
+  },
+];
+
 export default function ClientHubPage() {
   const [currentRole, setCurrentRole] = useState<UserRole>("studio_director");
   const [isInStudio, setIsInStudio] = useState<boolean>(false);
 
   // Sessions and Active Session state
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
-  const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
-  const [studioName, setStudioName] = useState<string>("");
+  const [sessions, setSessions] = useState<SessionItem[]>(INITIAL_SESSIONS);
+  const [activeSession, setActiveSession] = useState<SessionItem | null>(INITIAL_SESSIONS[0]);
+  const [studioName, setStudioName] = useState<string>("Studio TAF");
 
   // Separate Talkback / Mic states by role (Naručilac vs Klijent gost)
   const [agencyTalkbackOn, setAgencyTalkbackOn] = useState<boolean>(false);
@@ -173,6 +240,11 @@ export default function ClientHubPage() {
   }, []);
 
   const handleEnterStudio = async (sessId: string) => {
+    const target = sessions.find((s) => s.id === sessId) || activeSession || sessions[0] || INITIAL_SESSIONS[0];
+    if (target) {
+      setActiveSession(target);
+    }
+    setIsInStudio(true);
     try {
       await fetch("/api/studio/status", {
         method: "POST",
@@ -180,7 +252,6 @@ export default function ClientHubPage() {
         body: JSON.stringify({ action: "SWITCH_SESSION", sessionId: sessId }),
       });
       await fetchStatus();
-      setIsInStudio(true);
     } catch (_) {}
   };
 
@@ -313,13 +384,11 @@ export default function ClientHubPage() {
         />
       ) : currentRole === "studio_director" ? (
         /* DIRECTOR STUDIO CONSOLE */
-        activeSession && (
-          <StudioDirectorConsole
-            session={activeSession}
-            onExitSession={handleExitStudio}
-            onUpdateSession={fetchStatus}
-          />
-        )
+        <StudioDirectorConsole
+          session={activeSession || sessions[0] || INITIAL_SESSIONS[0]}
+          onExitSession={handleExitStudio}
+          onUpdateSession={fetchStatus}
+        />
       ) : (
         /* CLIENT / NARUČILAC LIVE STUDIO ROOM - LIGHT TEAL DESIGN */
         activeSession && (
