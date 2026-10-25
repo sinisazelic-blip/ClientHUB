@@ -322,30 +322,81 @@ export default function ClientHubPage() {
         activeSession && (
           <div className="flex-1 flex flex-col">
             {/* Topbar for Client */}
-            <header className="bg-white/95 border-b border-teal-200/80 px-6 py-3 flex items-center justify-between shadow-sm backdrop-blur-md">
-              <div className="flex items-center gap-3">
-                <FluxaxNetLogo size="sm" />
-                <div className="border-l border-teal-200 pl-3">
-                  <div className="text-sm font-bold text-slate-900 leading-tight flex items-center">
-                    <span>{activeSession.projectName}</span>
-                    <span
-                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ml-2 border ${
-                        currentRole === "agency_tenant"
-                          ? "bg-purple-100 text-purple-800 border-purple-300"
-                          : "bg-teal-100 text-teal-800 border-teal-300"
-                      }`}
-                    >
-                      {currentRole === "agency_tenant" ? "NARUČILAC (ODOBRAVANJE)" : "KLIJENT (SLUŠANJE)"}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-medium">
+            <header className="bg-white/95 border-b border-teal-200/80 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow-sm backdrop-blur-md">
+              <div className="flex flex-col gap-2 max-w-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-black text-slate-900 leading-tight">
+                    {activeSession.projectName}
+                  </span>
+                  <span
+                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      currentRole === "agency_tenant"
+                        ? "bg-purple-100 text-purple-800 border-purple-300"
+                        : "bg-teal-100 text-teal-800 border-teal-300"
+                    }`}
+                  >
+                    {currentRole === "agency_tenant" ? "NARUČILAC (ODOBRAVANJE)" : "KLIJENT (SLUŠANJE)"}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium ml-1">
                     Spiker: <strong className="text-teal-700">{activeSession.speakerName}</strong>
                     {studioName ? ` • ${studioName}` : ""}
+                  </span>
+                </div>
+
+                {/* SEQUENTIAL ATTENDEES IN HEADER: Studio -> Naručilac -> Klijenti (Wrap cleanly, NO black bar) */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {/* 1. Studio Režija */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-amber-50/80 border-amber-300 text-amber-950 text-xs shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="font-bold text-[11px]">Režija (Tonac)</span>
                   </div>
+
+                  {/* 2. Naručilac */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-purple-50/80 border-purple-300 text-purple-950 text-xs shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-purple-600" />
+                    <span className="text-[10px] text-purple-700 font-semibold uppercase">Naručilac:</span>
+                    <span className="font-bold text-[11px]">{activeSession.clientName}</span>
+                  </div>
+
+                  {/* 3. Klijenti / Gosti */}
+                  {activeSession.attendees &&
+                    activeSession.attendees
+                      .filter((att) => att.role !== "studio_director")
+                      .map((att) => {
+                        const isAgency = att.role === "agency_tenant";
+                        const isSpeaker = att.role === "speaker";
+
+                        return (
+                          <div
+                            key={att.id}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all text-xs shadow-2xs ${
+                              att.isSpeaking
+                                ? "bg-teal-100/90 border-teal-500 ring-1 ring-teal-400"
+                                : "bg-white border-slate-200 text-slate-800"
+                            }`}
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] ${
+                                isSpeaker
+                                  ? "bg-teal-600 text-white"
+                                  : isAgency
+                                  ? "bg-purple-600 text-white"
+                                  : "bg-slate-700 text-white"
+                              }`}
+                            >
+                              {att.name.charAt(0)}
+                            </div>
+                            <span className="font-bold text-[11px] text-slate-800">{att.name}</span>
+                            <span className="text-[9px] text-slate-500 font-mono">
+                              ({att.company || (isSpeaker ? "Glumac" : "Gost")})
+                            </span>
+                          </div>
+                        );
+                      })}
                 </div>
               </div>
 
-              {/* Status Beacon */}
+              {/* Status Beacon & Exit */}
               <div className="flex items-center gap-3">
                 {activeSession.isOnAir ? (
                   <div className="px-4 py-1.5 rounded-full bg-red-600 text-white font-bold text-xs tracking-wider animate-pulse border border-red-400 shadow-md shadow-red-500/20 flex items-center gap-2">
@@ -368,82 +419,108 @@ export default function ClientHubPage() {
               </div>
             </header>
 
-            {/* DYNAMIC MULTI-CLIENT BAR IN CLIENT VIEW */}
-            {activeSession.attendees && activeSession.attendees.length > 0 && (
-              <div className="bg-slate-900 text-white border-b border-slate-800 px-6 py-2 overflow-x-auto scrollbar-thin">
-                <div className="flex items-center gap-3 min-w-max">
-                  <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400 uppercase tracking-wider pr-3 border-r border-slate-800">
-                    <Users className="w-3.5 h-3.5 text-teal-400" />
-                    <span>Učesnici ({activeSession.attendees.length}):</span>
-                  </div>
-
-                  {activeSession.attendees.map((att) => (
-                    <div
-                      key={att.id}
-                      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs ${
-                        att.isSpeaking
-                          ? "bg-teal-950/80 border-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.4)]"
-                          : "bg-slate-800/80 border-slate-700 text-slate-300"
-                      }`}
-                    >
-                      <div className="w-5 h-5 rounded-full bg-slate-700 text-[9px] font-bold flex items-center justify-center text-white">
-                        {att.name.charAt(0)}
-                      </div>
-                      <span className="font-bold text-[11px] text-slate-100">{att.name}</span>
-                      <span className="text-[9px] text-slate-400 font-mono">({att.company || "Učesnik"})</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Client Studio Body */}
             <main className="flex-1 p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Visual Screen, Scenario & Audio Trezor */}
               <div className="lg:col-span-8 space-y-6">
 
-                {/* VIDEO SCREENING OR AUTHENTIC CLA AUDIO CONSOLE */}
-                <div className="rounded-2xl overflow-hidden shadow-sm">
-                  {activeSession.focusMode === "video" || activeSession.videoEnabled ? (
-                    <div className="p-8 text-center bg-slate-950 border border-slate-800 rounded-2xl text-white min-h-[300px] flex flex-col items-center justify-center relative">
-                      <Tv className="w-12 h-12 text-purple-400 mb-2 opacity-90" />
-                      <h4 className="text-sm font-bold text-white mb-1">
-                        Video Screening Uživo • DaVinci / Premiere Previews
-                      </h4>
-                      <p className="text-xs text-slate-300 max-w-md">
-                        Slika je sinhronizovana sa tonom u realnom vremenu (1080p, ultra-niska latencija).
-                      </p>
-                      <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-900/60 border border-purple-600 text-purple-200 text-xs font-mono">
-                        <Video className="w-3.5 h-3.5" />
-                        <span>VIDEO STREAM AKTIVAN • ZERO-BLEED AUDIO</span>
+                {/* DOMINANT LARGE VIDEO SCREENING PLAYER FOR CLIENT & NARUČILAC */}
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
+                  {/* Player Topbar */}
+                  <div className="bg-slate-900/90 border-b border-slate-800 px-5 py-3 flex items-center justify-between backdrop-blur-md">
+                    <div className="flex items-center gap-2.5">
+                      <Tv className="w-4 h-4 text-purple-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        Video Screening Uživo • 1080p DaVinci / Premiere Feed
+                      </span>
+                      <span className="text-[10px] font-mono text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded border border-purple-700 hidden sm:inline-block">
+                        Ultra-Niska Latencija (LAN / WebRTC)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* Real-time Timecode Display */}
+                      <div className="font-mono text-xs font-black text-amber-400 bg-black/70 px-3 py-1 rounded-lg border border-amber-500/40 shadow-inner">
+                        TC: 01:24:12:08
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-[10px] font-bold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>AUDIO & VIDEO U SINHRONU</span>
                       </div>
                     </div>
-                  ) : (
-                    /* AUTHENTIC CLA ANALOG RACK UNIT */
-                    <ClaHardwareConsole
-                      key={currentRole}
-                      studioName={studioName || "Studio TAF"}
-                      projectName={activeSession.projectName}
-                      speakerName={activeSession.speakerName}
-                      isOnAir={activeSession.isOnAir}
-                      isTalkbackActive={isCurrentTalkbackOn}
-                      onTalkbackToggle={handleCurrentTalkbackToggle}
-                      micGain={activeConsole.micGain}
-                      onMicGainChange={(val) => updateActiveConsole({ micGain: val })}
-                      phonesVol={activeConsole.phonesVol}
-                      onPhonesVolumeChange={(val) => updateActiveConsole({ phonesVol: val })}
-                      isMuted={activeConsole.isMuted}
-                      onMuteToggle={(val) => updateActiveConsole({ isMuted: val })}
-                      isDimmed={activeConsole.isDimmed}
-                      onDimToggle={(val) => updateActiveConsole({ isDimmed: val })}
-                      autoDuck={activeConsole.autoDuck}
-                      onAutoDuckToggle={(val) => updateActiveConsole({ autoDuck: val })}
-                      monitorMode={activeConsole.monitorMode}
-                      onMonitorModeToggle={(val) => updateActiveConsole({ monitorMode: val })}
-                      hdCodec={activeConsole.hdCodec}
-                      onHdCodecToggle={(val) => updateActiveConsole({ hdCodec: val })}
-                    />
-                  )}
+                  </div>
+
+                  {/* High-Resolution Dominant Video Screen */}
+                  <div className="aspect-video w-full bg-black relative flex items-center justify-center overflow-hidden min-h-[360px] sm:min-h-[440px]">
+                    <div className="text-center p-8 max-w-lg space-y-3">
+                      <div className="w-16 h-16 rounded-2xl bg-purple-900/30 border border-purple-700/50 text-purple-400 flex items-center justify-center mx-auto shadow-inner">
+                        <Tv className="w-8 h-8 opacity-90 animate-pulse" />
+                      </div>
+                      <h3 className="text-base font-bold text-white">
+                        {activeSession.projectName}
+                      </h3>
+                      <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
+                        Slika i zvuk emituju se direktno iz montažnog programa režije u realnom vremenu (1080p, 48 kHz / 24-bit).
+                      </p>
+                      <div className="pt-2 flex items-center justify-center gap-2">
+                        <span className="px-3 py-1 rounded-full bg-purple-950/80 border border-purple-600 text-purple-200 text-xs font-mono font-bold">
+                          Spiker: {activeSession.speakerName}
+                        </span>
+                        <span className="px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono">
+                          Zero-Bleed Mix-Minus
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Overlaid REC Beacon if ON AIR */}
+                    {activeSession.isOnAir && (
+                      <div className="absolute top-4 left-4 bg-red-600/90 text-white text-[11px] font-bold font-mono px-3.5 py-1.5 rounded-full backdrop-blur-md flex items-center gap-2 border border-red-400 shadow-lg animate-pulse">
+                        <span className="w-2.5 h-2.5 rounded-full bg-white" />
+                        <span>● REC ON AIR - SNIMA SE</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Player Bottom Control & Audio Listening Strip */}
+                  <div className="bg-slate-900/95 border-t border-slate-800 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
+                    <div className="flex items-center gap-4">
+                      {/* Talkback Push-to-Talk Button for Client / Agency */}
+                      <button
+                        onClick={() => handleCurrentTalkbackToggle(!isCurrentTalkbackOn)}
+                        className={`py-2 px-5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 border shadow-sm ${
+                          isCurrentTalkbackOn
+                            ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 shadow-amber-500/20"
+                            : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                        }`}
+                      >
+                        {isCurrentTalkbackOn ? <Mic className="w-4 h-4 fill-current text-slate-950" /> : <MicOff className="w-4 h-4 text-slate-400" />}
+                        <span>{isCurrentTalkbackOn ? "TALKBACK UKLJUČEN (Govorite)" : "UKLJUČI MIKROFON (Talkback)"}</span>
+                      </button>
+
+                      <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium">
+                        <span>Režim:</span>
+                        <span className="text-slate-200 font-bold">
+                          {currentRole === "agency_tenant" ? "Naručilac (Vodi snimanje & odobrava)" : "Klijent (Sluša & komentariše)"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Client Phones Volume Slider */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-400 font-medium">Glasnoća slušanja:</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={activeConsole.phonesVol}
+                        onChange={(e) => updateActiveConsole({ phonesVol: Number(e.target.value) })}
+                        className="w-28 accent-teal-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
+                      />
+                      <span className="font-mono text-xs font-bold text-teal-400 w-8">
+                        {activeConsole.phonesVol}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Scenario & Takes with Approval Controls */}

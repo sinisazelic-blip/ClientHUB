@@ -394,53 +394,91 @@ export default function StudioDirectorConsole({
           TOP MASTER CONTROL BAR (Light Studio Header)
       ========================================================================= */}
       <header className="bg-white/95 border-b border-teal-200/80 px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 shadow-sm backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <FluxaxNetLogo size="sm" />
-          <div className="border-l border-teal-200 pl-3">
-            <div className="text-sm font-bold text-slate-900 leading-tight flex items-center gap-2">
-              <span>{session.projectName}</span>
-              <span className="text-[10px] text-teal-800 font-mono px-2 py-0.5 rounded bg-teal-100/80 border border-teal-300 font-bold">
-                REŽIJA
-              </span>
-              <span className="text-[10px] text-teal-700 font-mono px-2 py-0.5 rounded bg-teal-50 border border-teal-200 font-bold" title="Aktivni build Client HUB-a">
-                Build {APP_CONFIG.build}
-              </span>
+        <div className="flex flex-col gap-2 max-w-3xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-black text-slate-900 leading-tight">
+              {session.projectName}
+            </span>
+            <span className="text-[10px] text-teal-800 font-mono px-2 py-0.5 rounded bg-teal-100/80 border border-teal-300 font-bold">
+              REŽIJA
+            </span>
+            <span className="text-[10px] text-teal-700 font-mono px-2 py-0.5 rounded bg-teal-50 border border-teal-200 font-bold" title="Aktivni build Client HUB-a">
+              Build {APP_CONFIG.build}
+            </span>
+            <span className="text-xs text-slate-500 font-medium ml-1">
+              Spiker: <strong className="text-teal-700">{session.speakerName}</strong>
+            </span>
+          </div>
+
+          {/* SEQUENTIAL ATTENDEES IN HEADER: Studio -> Naručilac -> Klijenti (Wrap cleanly, NO black bar) */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            {/* 1. Studio Režija */}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-amber-50/80 border-amber-300 text-amber-950 text-xs shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="font-bold text-[11px]">Režija (Tonac)</span>
             </div>
-            <div className="text-[11px] text-slate-600">
-              Naručilac: <strong className="text-slate-900">{session.clientName}</strong> • Spiker:{" "}
-              <strong className="text-teal-700">{session.speakerName}</strong>
+
+            {/* 2. Naručilac */}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-purple-50/80 border-purple-300 text-purple-950 text-xs shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-purple-600" />
+              <span className="text-[10px] text-purple-700 font-semibold uppercase">Naručilac:</span>
+              <span className="font-bold text-[11px]">{session.clientName}</span>
             </div>
+
+            {/* 3. Klijenti / Gosti (Ordered sequentially, wrapping smoothly) */}
+            {attendees
+              .filter((att) => att.role !== "studio_director")
+              .map((att) => {
+                const isAgency = att.role === "agency_tenant";
+                const isSpeaker = att.role === "speaker";
+
+                return (
+                  <div
+                    key={att.id}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all text-xs shadow-2xs ${
+                      att.isSpeaking
+                        ? "bg-teal-100/90 border-teal-500 ring-1 ring-teal-400"
+                        : "bg-white border-slate-200 hover:border-slate-300 text-slate-800"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] ${
+                        isSpeaker
+                          ? "bg-teal-600 text-white"
+                          : isAgency
+                          ? "bg-purple-600 text-white"
+                          : "bg-slate-700 text-white"
+                      }`}
+                    >
+                      {att.name.charAt(0)}
+                    </div>
+
+                    <div className="flex items-center gap-1 leading-tight">
+                      <span className="font-bold text-[11px] text-slate-800">{att.name}</span>
+                      <span className="text-[9px] text-slate-500 font-mono">
+                        ({att.company || (isSpeaker ? "Glumac" : "Gost")})
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleAttendeeMute(att.id, att.isMuted)}
+                      title={att.isMuted ? "Uključi mikrofon učesnika" : "Privremeno utišaj učesnika"}
+                      className={`p-0.5 rounded transition-colors cursor-pointer ml-0.5 ${
+                        att.isMuted
+                          ? "bg-red-100 text-red-600 hover:bg-red-200"
+                          : "text-slate-400 hover:text-slate-700"
+                      }`}
+                    >
+                      {att.isMuted ? <MicOff className="w-3 h-3 text-red-500" /> : <Mic className="w-3 h-3" />}
+                    </button>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
         {/* Action Controls in Topbar */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* FOCUS MODE TOGGLE: Audio Focus vs Video Screening Focus */}
-          <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-300 shadow-inner">
-            <button
-              onClick={() => handleToggleFocusMode("audio")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                focusMode === "audio"
-                  ? "bg-teal-700 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Mic className="w-3.5 h-3.5" />
-              <span>Audio Fokus</span>
-            </button>
-            <button
-              onClick={() => handleToggleFocusMode("video")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                focusMode === "video"
-                  ? "bg-purple-700 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Video className="w-3.5 h-3.5" />
-              <span>Video Screening Fokus</span>
-            </button>
-          </div>
-
           {/* Session Billing Timer Badge */}
           <div
             title="Aktivno vrijeme zakupa termina i snimanja"
@@ -502,377 +540,238 @@ export default function StudioDirectorConsole({
       </header>
 
       {/* =========================================================================
-          DYNAMIC MULTI-CLIENT BAR (17+ ATTENDEES SUPPORT WITH ZERO-BLEED MIX-MINUS)
-      ========================================================================= */}
-      <div className="bg-slate-900 text-white border-b border-slate-800 px-6 py-2.5 overflow-x-auto scrollbar-thin">
-        <div className="flex items-center gap-3 min-w-max">
-          <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400 uppercase tracking-wider pr-3 border-r border-slate-800">
-            <Users className="w-3.5 h-3.5 text-teal-400" />
-            <span>Učesnici ({attendees.length}):</span>
-          </div>
-
-          {attendees.map((att) => {
-            const isSpeaker = att.role === "speaker";
-            const isDirector = att.role === "studio_director";
-            const isAgency = att.role === "agency_tenant";
-
-            return (
-              <div
-                key={att.id}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all text-xs ${
-                  att.isSpeaking
-                    ? "bg-teal-950/80 border-teal-500 shadow-[0_0_12px_rgba(20,184,166,0.5)] ring-1 ring-teal-400"
-                    : "bg-slate-800/80 border-slate-700 text-slate-200"
-                }`}
-              >
-                {/* Initial Badge */}
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${
-                    isDirector
-                      ? "bg-amber-500 text-slate-950"
-                      : isSpeaker
-                      ? "bg-teal-500 text-slate-950"
-                      : isAgency
-                      ? "bg-purple-500 text-white"
-                      : "bg-slate-600 text-white"
-                  }`}
-                >
-                  {att.name.charAt(0)}
-                </div>
-
-                <div className="flex flex-col leading-tight">
-                  <span className="font-bold text-slate-100 text-[11px] flex items-center gap-1">
-                    {att.name}
-                    {att.isSpeaking && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    )}
-                  </span>
-                  <span className="text-[9px] text-slate-400 font-mono">
-                    {att.company || (isDirector ? "Režija" : isSpeaker ? "Glumačka soba" : "Klijent")}
-                  </span>
-                </div>
-
-                {/* Mute button */}
-                <button
-                  onClick={() => handleToggleAttendeeMute(att.id, att.isMuted)}
-                  title={att.isMuted ? "Uključi mikrofon učesnika" : "Privremeno utišaj učesnika"}
-                  className={`p-1 rounded-md transition-colors cursor-pointer ml-1 ${
-                    att.isMuted
-                      ? "bg-red-500/20 text-red-400 hover:bg-red-500/40"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  {att.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* =========================================================================
-          MAIN WORKSPACE (AUDIO FOCUS VS VIDEO SCREENING FOCUS)
+          MAIN WORKSPACE: UNIFIED DIRECTOR CONSOLE WITH COMPACT INFORMATIVE VIDEO
       ========================================================================= */}
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
 
-        {/* =====================================================================
-            VIDEO SCREENING FOCUS MODE (Videographer son's DaVinci / Premiere preview)
-        ===================================================================== */}
-        {focusMode === "video" && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            {/* 1. Large 16:9 Video Screening Cinema Frame */}
-            <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
-              {/* Cinema Topbar */}
-              <div className="bg-slate-900/90 border-b border-slate-800 px-5 py-3 flex items-center justify-between backdrop-blur-md">
-                <div className="flex items-center gap-2">
-                  <Video className="w-4 h-4 text-purple-400" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
-                    Video Screening Feed • 1080p Ultra-Low Latency
-                  </span>
-                  <span className="text-[10px] font-mono text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded border border-purple-700">
-                    DaVinci Resolve / Premiere Pro
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {/* Real-time Timecode Display */}
-                  <div className="font-mono text-xs font-black text-amber-400 bg-black/60 px-3 py-1 rounded-lg border border-amber-500/30">
-                    TC: 01:24:12:08
-                  </div>
-
-                  {/* Share Screen / Video Button */}
-                  <button
-                    onClick={handleStartScreenShare}
-                    className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 border shadow-sm ${
-                      isSharingScreen
-                        ? "bg-red-600 hover:bg-red-500 text-white border-red-500 animate-pulse"
-                        : "bg-purple-600 hover:bg-purple-500 text-white border-purple-500 shadow-purple-600/30"
-                    }`}
-                  >
-                    <Monitor className="w-3.5 h-3.5" />
-                    <span>{isSharingScreen ? "Zaustavi Dijeljenje" : "Dijeli Montažni Ekran"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Video Player Display */}
-              <div className="aspect-video w-full bg-black relative flex items-center justify-center overflow-hidden">
-                {isSharingScreen && screenStream ? (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-center p-8 max-w-lg space-y-3">
-                    <div className="w-16 h-16 rounded-2xl bg-purple-900/30 border border-purple-700/50 text-purple-400 flex items-center justify-center mx-auto shadow-inner">
-                      <Tv className="w-8 h-8 opacity-90" />
-                    </div>
-                    <h3 className="text-base font-bold text-white">
-                      Ekran za Pregled Montaže i Video Sinhronizaciju
-                    </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Kliknite na dugme <strong>„Dijeli Montažni Ekran“</strong> iznad i odaberite prozor vašeg programa (Premiere Pro, DaVinci Resolve, After Effects). Klijenti prate video sinhronizovan sa tonom.
-                    </p>
-                    <button
-                      onClick={handleStartScreenShare}
-                      className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-purple-600/30 transition-all cursor-pointer inline-flex items-center gap-2"
-                    >
-                      <Monitor className="w-4 h-4" />
-                      <span>Pokreni Video Screening</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Overlaid Subtle REC Beacon if ON AIR */}
-                {isOnAir && (
-                  <div className="absolute top-4 left-4 bg-red-600/90 text-white text-[11px] font-bold font-mono px-3 py-1 rounded-full backdrop-blur-md flex items-center gap-2 border border-red-400 shadow-lg animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-white" />
-                    <span>REC ON AIR • {formatTimer(recElapsedSeconds)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Unobtrusive Floating Audio Control Strip at bottom of video */}
-              <div className="bg-slate-900/95 border-t border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                  {/* Talkback quick button */}
-                  <button
-                    onClick={handleToggleTalkback}
-                    className={`py-2 px-4 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 border shadow-sm ${
-                      talkbackOn
-                        ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400"
-                        : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
-                    }`}
-                  >
-                    {talkbackOn ? <Mic className="w-4 h-4 fill-current" /> : <MicOff className="w-4 h-4" />}
-                    <span>{talkbackOn ? "TALKBACK UKLJUČEN" : "TALKBACK UGAŠEN"}</span>
-                  </button>
-
-                  {/* Compact Stereo VU */}
-                  <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400">
-                    <span>L</span>
-                    <div className="w-24 h-2 bg-slate-800 rounded border border-slate-700 overflow-hidden">
-                      <div className="h-full bg-emerald-500" style={{ width: `${masterVuL}%` }} />
-                    </div>
-                    <span>R</span>
-                    <div className="w-24 h-2 bg-slate-800 rounded border border-slate-700 overflow-hidden">
-                      <div className="h-full bg-emerald-500" style={{ width: `${masterVuR}%` }} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-xs text-slate-400 flex items-center gap-2">
-                  <span>Audio radi u pozadini (Zero-Bleed 48k Opus)</span>
-                  <button
-                    onClick={() => handleToggleFocusMode("audio")}
-                    className="text-teal-400 hover:text-teal-300 font-bold underline cursor-pointer text-xs"
-                  >
-                    Otvori pune fjdere
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* =====================================================================
-            AUDIO FOCUS MODE: MASTER HARDWARE VU & COMMUNICATIONS
-        ===================================================================== */}
-        {focusMode === "audio" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
-            {/* Master Stream VU-Meter */}
-            <div className="lg:col-span-8 bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-teal-600" />
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Outgoing Master Audio Stream (Ka Klijentima)
-                  </span>
-                  <span
-                    title="Stvarni hardverski signal izlazne matrice StudioBridge-a"
-                    className="cursor-help text-slate-400 hover:text-teal-600"
-                  >
-                    <Info className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-                <div className="text-[11px] font-mono font-semibold text-slate-500">
-                  48.0 kHz / 24-bit Broadcast
-                </div>
-              </div>
-
-              {/* Stereo VU Bars */}
-              <div className="space-y-2.5 my-2">
-                <div className="flex items-center gap-3">
-                  <span className="w-4 font-mono text-xs font-bold text-slate-500">L</span>
-                  <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-all duration-75"
-                      style={{ width: `${masterVuL}%` }}
-                    />
-                  </div>
-                  <span className="w-16 text-right font-mono text-xs font-bold text-teal-700">{masterDbL}</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="w-4 font-mono text-xs font-bold text-slate-500">R</span>
-                  <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-all duration-75"
-                      style={{ width: `${masterVuR}%` }}
-                    />
-                  </div>
-                  <span className="w-16 text-right font-mono text-xs font-bold text-teal-700">{masterDbR}</span>
-                </div>
-              </div>
-
-              {/* VU Scale Markers */}
-              <div className="flex justify-between text-[9px] font-mono text-slate-400 px-7">
-                <span>-60</span>
-                <span>-40</span>
-                <span>-20</span>
-                <span>-12</span>
-                <span>-6</span>
-                <span>-2</span>
-                <span>0 dBFS</span>
-              </div>
-
-              {/* Talkback Toggle */}
-              <div className="mt-4 pt-4 border-t border-teal-100 flex items-center justify-between">
-                <div className="text-xs text-slate-600 flex items-center gap-2">
-                  <span>Komunikacija:</span>
-                  {roleTalkbacks.agency_tenant && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-100 border border-purple-300 text-purple-900 font-bold text-[10px] animate-pulse flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
-                      <span>Naručilac priča</span>
-                    </span>
-                  )}
-                  {roleTalkbacks.guest_participant && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-teal-100 border border-teal-300 text-teal-900 font-bold text-[10px] animate-pulse flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
-                      <span>Klijent priča</span>
-                    </span>
-                  )}
-                  {!roleTalkbacks.agency_tenant && !roleTalkbacks.guest_participant && (
-                    <strong className="text-slate-800">Režija ⇄ Glumačka soba ⇄ Klijenti</strong>
-                  )}
-                </div>
-
-                <button
-                  onClick={handleToggleTalkback}
-                  className={`py-2 px-5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 border shadow-sm ${
-                    talkbackOn
-                      ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-400 shadow-amber-500/20"
-                      : "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
-                  }`}
+        {/* TOP ROW: MASTER VU + RME MONITORING + INFORMATIVE VIDEO MONITOR */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
+          
+          {/* 1. MASTER STREAM VU-METER & TALKBACK (Col 5) */}
+          <div className="lg:col-span-5 bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-teal-600" />
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Master Audio Stream (Ka Klijentima)
+                </span>
+                <span
+                  title="Stvarni hardverski signal izlazne matrice StudioBridge-a"
+                  className="cursor-help text-slate-400 hover:text-teal-600"
                 >
-                  {talkbackOn ? <Mic className="w-4 h-4 fill-current" /> : <MicOff className="w-4 h-4" />}
-                  <span>{talkbackOn ? "🔴 TALKBACK UKLJUČEN" : "⚪ TALKBACK ISKLJUČEN"}</span>
-                </button>
+                  <Info className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <div className="text-[10px] font-mono font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                48k / 24-bit
               </div>
             </div>
 
-            {/* Preslušavanje / Monitoring */}
-            <div className="lg:col-span-4 bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-teal-600" />
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Preslušavanje (RME Izlazi)
+            {/* Stereo VU Bars */}
+            <div className="space-y-2.5 my-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 font-mono text-xs font-bold text-slate-500">L</span>
+                <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-all duration-75"
+                    style={{ width: `${masterVuL}%` }}
+                  />
+                </div>
+                <span className="w-14 text-right font-mono text-xs font-bold text-teal-700">{masterDbL}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="w-3 font-mono text-xs font-bold text-slate-500">R</span>
+                <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-all duration-75"
+                    style={{ width: `${masterVuR}%` }}
+                  />
+                </div>
+                <span className="w-14 text-right font-mono text-xs font-bold text-teal-700">{masterDbR}</span>
+              </div>
+            </div>
+
+            {/* VU Scale Markers */}
+            <div className="flex justify-between text-[9px] font-mono text-slate-400 px-5">
+              <span>-60</span>
+              <span>-40</span>
+              <span>-20</span>
+              <span>-12</span>
+              <span>-6</span>
+              <span>0 dBFS</span>
+            </div>
+
+            {/* Talkback Toggle */}
+            <div className="mt-4 pt-3.5 border-t border-teal-100 flex items-center justify-between gap-2">
+              <div className="text-[11px] text-slate-600 flex items-center gap-1.5">
+                {roleTalkbacks.agency_tenant && (
+                  <span className="px-2 py-0.5 rounded-full bg-purple-100 border border-purple-300 text-purple-900 font-bold text-[10px] animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                    <span>Naručilac priča</span>
                   </span>
-                </div>
+                )}
+                {roleTalkbacks.guest_participant && (
+                  <span className="px-2 py-0.5 rounded-full bg-teal-100 border border-teal-300 text-teal-900 font-bold text-[10px] animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                    <span>Klijent priča</span>
+                  </span>
+                )}
+                {!roleTalkbacks.agency_tenant && !roleTalkbacks.guest_participant && (
+                  <span className="text-slate-600">Režija ⇄ Klijenti</span>
+                )}
               </div>
 
-              <div className="space-y-4 my-auto">
-                <div>
-                  <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-700">Režija Zvučnici (CR):</span>
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold">
-                        Izlaz 7/8
-                      </span>
-                    </div>
-                    <span className="font-mono text-teal-700 font-bold">{volCR}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volCR}
-                    onChange={(e) => handleVolCRChange(Number(e.target.value))}
-                    className="w-full accent-teal-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-700">Slušalice Spikera (Booth):</span>
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold">
-                        Izlaz 3/4
-                      </span>
-                    </div>
-                    <span className="font-mono text-amber-700 font-bold">{volBooth}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volBooth}
-                    onChange={(e) => handleVolBoothChange(Number(e.target.value))}
-                    className="w-full accent-amber-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-700">Klijentski Laptopi (Stream):</span>
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold">
-                        Izlaz 1/2
-                      </span>
-                    </div>
-                    <span className="font-mono text-emerald-700 font-bold">{volClient}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volClient}
-                    onChange={(e) => handleVolClientChange(Number(e.target.value))}
-                    className="w-full accent-emerald-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div className="text-[10px] text-slate-500 pt-3 border-t border-teal-100 flex justify-between">
-                <span>Zero-Bleed zaštićeno</span>
-                <span className="text-slate-600 font-medium">LAN / WebRTC</span>
-              </div>
+              <button
+                onClick={handleToggleTalkback}
+                className={`py-1.5 px-3.5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-1.5 border shadow-sm ${
+                  talkbackOn
+                    ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 shadow-amber-500/20"
+                    : "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
+                }`}
+              >
+                {talkbackOn ? <Mic className="w-3.5 h-3.5 fill-current" /> : <MicOff className="w-3.5 h-3.5" />}
+                <span>{talkbackOn ? "TALKBACK UKLJUČEN" : "TALKBACK UGAŠEN"}</span>
+              </button>
             </div>
           </div>
-        )}
+
+          {/* 2. RME PRESLUŠAVANJE / IZLAZI (Col 3) */}
+          <div className="lg:col-span-3 bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-teal-600" />
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  RME Izlazi
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 my-auto">
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1 font-medium">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-700 text-[11px]">Režija (CR):</span>
+                    <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-600 font-bold">7/8</span>
+                  </div>
+                  <span className="font-mono text-teal-700 font-bold text-xs">{volCR}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={volCR}
+                  onChange={(e) => handleVolCRChange(Number(e.target.value))}
+                  className="w-full accent-teal-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1 font-medium">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-700 text-[11px]">Spiker (Booth):</span>
+                    <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-600 font-bold">3/4</span>
+                  </div>
+                  <span className="font-mono text-amber-700 font-bold text-xs">{volBooth}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={volBooth}
+                  onChange={(e) => handleVolBoothChange(Number(e.target.value))}
+                  className="w-full accent-amber-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1 font-medium">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-700 text-[11px]">Klijenti (Stream):</span>
+                    <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-600 font-bold">1/2</span>
+                  </div>
+                  <span className="font-mono text-emerald-700 font-bold text-xs">{volClient}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={volClient}
+                  onChange={(e) => handleVolClientChange(Number(e.target.value))}
+                  className="w-full accent-emerald-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="text-[10px] text-slate-500 pt-2.5 border-t border-teal-100 flex justify-between">
+              <span>Zero-Bleed</span>
+              <span className="text-slate-600 font-medium">LAN / WebRTC</span>
+            </div>
+          </div>
+
+          {/* 3. INFORMATIVNI VIDEO MONITOR ZA TONCA (Col 4) - KOMPAKTNI PREVIEW */}
+          <div className="lg:col-span-4 bg-white border border-teal-200/80 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Video className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Informativni Video Prikaz
+                </span>
+              </div>
+              <div className="font-mono text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                TC: 01:24:12:08
+              </div>
+            </div>
+
+            {/* Compact Video Window (Tonac already has editing software on main screen) */}
+            <div className="aspect-video w-full bg-slate-950 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-800 shadow-inner my-1">
+              {isSharingScreen && screenStream ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="text-center p-3 space-y-1">
+                  <Tv className="w-6 h-6 text-purple-400 mx-auto opacity-70" />
+                  <p className="text-[11px] font-semibold text-slate-300">
+                    DaVinci / Premiere preview
+                  </p>
+                  <p className="text-[9px] text-slate-500 max-w-xs">
+                    Informativni thumbnail za provjeru sinhronizacije
+                  </p>
+                </div>
+              )}
+
+              {isOnAir && (
+                <div className="absolute top-2 left-2 bg-red-600/90 text-white text-[9px] font-bold font-mono px-2 py-0.5 rounded-full flex items-center gap-1 border border-red-400 shadow-sm animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <span>ON AIR</span>
+                </div>
+              )}
+            </div>
+
+            {/* Video Action Button & Status */}
+            <div className="pt-2 border-t border-teal-100 flex items-center justify-between gap-2">
+              <span className="text-[10px] text-slate-500">
+                {isSharingScreen ? "Stream aktivan ka klijentima" : "Pregled u mirovanju"}
+              </span>
+              <button
+                onClick={handleStartScreenShare}
+                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 border shadow-sm ${
+                  isSharingScreen
+                    ? "bg-red-600 hover:bg-red-500 text-white border-red-500"
+                    : "bg-purple-600 hover:bg-purple-500 text-white border-purple-500"
+                }`}
+              >
+                <Monitor className="w-3 h-3" />
+                <span>{isSharingScreen ? "Zaustavi" : "Dijeli Montažu"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
 
         {/* =========================================================================
             ROW 2: SCENARIO & DINAMIČKI TEJKOVI PO SEGMENTIMA
