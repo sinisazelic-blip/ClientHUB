@@ -409,7 +409,7 @@ export function ClaHardwareConsole({
 
               <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-teal-400 mb-1 flex items-center gap-1.5">
                 <Radio className="w-3.5 h-3.5 animate-pulse" />
-                <span>STUDIO AUDIO FEED • LIVE BROADCASТ</span>
+                <span>STUDIO AUDIO FEED • LIVE BROADCAST</span>
               </div>
 
               <div className="text-xl sm:text-2xl font-mono font-black text-white tracking-tight my-1">

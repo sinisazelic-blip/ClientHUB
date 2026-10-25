@@ -320,7 +320,7 @@ export async function POST(req: Request) {
           name: body.file.name || "Export_Take.wav",
           size: body.file.size || "15 MB",
           type: body.file.type || "audio",
-          uploadedAt: new Date().toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit" }),
+          uploadedAt: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
           url: body.file.url || "#",
         };
         s.projectFiles.unshift(newFile);

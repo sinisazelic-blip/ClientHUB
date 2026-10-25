@@ -155,21 +155,34 @@ export default function ReceptionLobby({
     setShowAddModal(true);
   };
 
-  // Date formatting helpers
-  const dayName = currentTime.toLocaleDateString("sr-RS", { weekday: "long" });
-  const dateFormatted = currentTime.toLocaleDateString("sr-RS", { day: "numeric", month: "long", year: "numeric" });
-  const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  // Pure Latin Date & Time Formatting (Bez ijednog ćiriličnog slova i bez hydration grešaka)
+  const LATIN_DAYS = ["Nedjelja", "Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota"];
+  const LATIN_MONTHS_GEN = [
+    "januara", "februara", "marta", "aprila", "maja", "juna",
+    "jula", "avgusta", "septembra", "oktobra", "novembra", "decembra"
+  ];
+
+  const formatLatinDate = (d: Date) => {
+    const day = LATIN_DAYS[d.getDay()];
+    const dateNum = d.getDate();
+    const month = LATIN_MONTHS_GEN[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day}, ${dateNum}. ${month} ${year}.`;
+  };
+
+  const dayName = LATIN_DAYS[currentTime.getDay()];
+  const dateFormatted = `${currentTime.getDate()}. ${LATIN_MONTHS_GEN[currentTime.getMonth()]} ${currentTime.getFullYear()}.`;
+  const capitalizedDay = dayName;
+
+  const hours = currentTime.getHours().toString().padStart(2, "0");
+  const minutes = currentTime.getMinutes().toString().padStart(2, "0");
+  const seconds = currentTime.getSeconds().toString().padStart(2, "0");
+  const timeFormatted = `${hours}:${minutes}:${seconds}`;
 
   // Selected date object
   const selectedDateObj = new Date(selectedYear, selectedMonth, selectedDay);
   const selectedDateStr = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, "0")}-${selectedDay.toString().padStart(2, "0")}`;
-  const selectedDateFormatted = selectedDateObj.toLocaleDateString("sr-RS", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  const capitalizedSelectedDate = selectedDateFormatted.charAt(0).toUpperCase() + selectedDateFormatted.slice(1);
+  const capitalizedSelectedDate = formatLatinDate(selectedDateObj);
 
   // Month navigation
   const monthNames = [
@@ -340,7 +353,7 @@ export default function ReceptionLobby({
               </div>
               <div>
                 <div className="font-mono text-2xl font-black tracking-tight text-slate-900" suppressHydrationWarning>
-                  {currentTime.toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  {timeFormatted}
                 </div>
                 <div className="text-xs font-semibold text-teal-800" suppressHydrationWarning>
                   {capitalizedDay}, {dateFormatted}

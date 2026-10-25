@@ -7,8 +7,8 @@ interface FluxaxNetLogoProps {
 
 export default function FluxaxNetLogo({ className = "", size = "md" }: FluxaxNetLogoProps) {
   const logoHeights = {
-    sm: "h-7",
-    md: "h-8",
+    sm: "h-7 sm:h-8",
+    md: "h-8 sm:h-9",
     lg: "h-10",
     xl: "h-12",
   };
@@ -18,7 +18,7 @@ export default function FluxaxNetLogo({ className = "", size = "md" }: FluxaxNet
       <img
         src="/branding/CH logo.png"
         alt="FluxaX Client HUB"
-        className={`${logoHeights[size]} w-auto object-contain block`}
+        className={`${logoHeights[size]} w-auto object-contain block drop-shadow-sm hover:scale-[1.02] transition-transform`}
       />
     </div>
   );

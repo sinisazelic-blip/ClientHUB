@@ -501,6 +501,36 @@ export default function StudioDirectorConsole({
             <span>{isBridgeOnline ? "HARDWARE ONLINE" : "OFFLINE"}</span>
           </div>
 
+          {/* IZBOR REŽIMA SNIMANJA: SAMO GLAS vs SA VIDEO PODLOGOM */}
+          <div className="bg-slate-100 p-1 rounded-xl border border-slate-300 flex items-center gap-1 shadow-inner">
+            <button
+              type="button"
+              onClick={() => handleToggleFocusMode("audio")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                focusMode === "audio"
+                  ? "bg-teal-600 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              title="Snimanje samo glasa (Voiceover / Radio / Audio knjiga bez videa)"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              <span>Samo Glas</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleFocusMode("video")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                focusMode === "video"
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              title="Snimanje sa video podlogom (Sinkronizacija na sliku / TV spot / DaVinci preview)"
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>Video Podloga</span>
+            </button>
+          </div>
+
           {/* REC ON AIR Toggle */}
           <button
             onClick={handleToggleOnAir}
