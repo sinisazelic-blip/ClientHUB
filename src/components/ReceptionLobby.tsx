@@ -197,7 +197,11 @@ export default function ReceptionLobby({
 
         <div className="max-w-xl w-full bg-white/95 border border-teal-200/80 rounded-3xl p-8 shadow-xl shadow-teal-950/5 backdrop-blur-md relative z-10 text-center">
           <div className="flex justify-center mb-6">
-            <FluxaxNetLogo size="lg" />
+            <img
+              src="/branding/CH logo.png"
+              alt="Client HUB"
+              className="h-12 w-auto object-contain"
+            />
           </div>
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold uppercase tracking-wider mb-4 shadow-sm">
@@ -231,16 +235,28 @@ export default function ReceptionLobby({
               </button>
             </div>
           ) : (
-            <div className="bg-teal-50/50 border border-teal-200/80 rounded-2xl p-6 mb-6 shadow-inner">
-              <div className="w-14 h-14 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+            <div className="bg-teal-50/50 border border-teal-200/80 rounded-2xl p-6 mb-6 shadow-inner space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
                 <DoorClosed className="w-8 h-8" />
               </div>
               <h3 className="text-base font-bold text-amber-900 mb-1">
                 Termin zakazan za {activeSession?.time || "danas"}
               </h3>
-              <p className="text-xs text-slate-600 mb-4">
+              <p className="text-xs text-slate-600 mb-2">
                 Režija postavlja scenario i nivoe signala. Čim tonac otvori vrata, ulazite u studio.
               </p>
+
+              {/* Animated ClientHUB Video Preview */}
+              <div className="rounded-xl overflow-hidden border border-teal-200 shadow-sm max-w-sm mx-auto bg-black">
+                <video
+                  src="/branding/ClientHUB animation.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-auto object-contain"
+                />
+              </div>
 
               <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-teal-200 font-mono text-xl font-bold text-teal-800 shadow-sm">
                 <Clock className="w-5 h-5 text-teal-600" />
