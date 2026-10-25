@@ -228,6 +228,9 @@ export default function ClientHubPage() {
       const params = new URLSearchParams(window.location.search);
       const roleParam = params.get("role") as UserRole;
       if (roleParam) setCurrentRole(roleParam);
+      if (params.get("view") === "studio" || params.get("inStudio") === "true") {
+        setIsInStudio(true);
+      }
       const sessionParam = params.get("session");
       if (sessionParam) {
         fetch("/api/studio/status", {
