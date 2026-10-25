@@ -15,11 +15,14 @@ export default function FluxaxNetLogo({ className = "", size = "md" }: FluxaxNet
 
   return (
     <div className={`flex items-center select-none ${className}`}>
-      <img
-        src="/branding/CH logo.png"
-        alt="FluxaX Client HUB"
-        className={`${logoHeights[size]} w-auto object-contain block drop-shadow-sm hover:scale-[1.02] transition-transform`}
-      />
+      {/* Vintage Studio Equipment Hardware Badge */}
+      <div className="relative inline-flex items-center justify-center px-2 py-1 rounded-lg bg-gradient-to-b from-[#181f29] via-[#0f151e] to-[#0a0e14] border border-slate-700/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_1px_3px_rgba(0,0,0,0.25)] hover:border-teal-500/60 transition-colors">
+        <img
+          src="/branding/CH logo.png"
+          alt="FluxaX Client HUB"
+          className={`${logoHeights[size]} w-auto object-contain block`}
+        />
+      </div>
     </div>
   );
 }

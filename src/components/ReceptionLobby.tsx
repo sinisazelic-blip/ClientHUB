@@ -19,6 +19,7 @@ import {
   Users,
   Mic,
   CalendarDays,
+  Info,
 } from "lucide-react";
 import FluxaxNetLogo from "@/components/FluxaxNetLogo";
 import { SessionItem } from "@/app/api/studio/status/route";
@@ -317,64 +318,49 @@ export default function ReceptionLobby({
   // DIRECTOR / TONAC: DEFAULT CALENDAR & 24-HOUR DAY SCHEDULE
   // =========================================================================
   return (
-    <div className="min-h-screen studio-light-bg text-slate-800 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen studio-light-bg text-slate-800 p-4 sm:p-6">
+      <div className="w-full space-y-4">
 
         {/* 1. TOP HEADER & ELEGANT STUDIO-LIGHT DIGITAL CLOCK */}
-        <div className="bg-white/95 border border-teal-200/80 rounded-3xl p-6 shadow-sm backdrop-blur-md flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <FluxaxNetLogo size="lg" />
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="px-3 py-0.5 rounded-full bg-teal-100/90 text-teal-900 border border-teal-300 text-[11px] font-bold uppercase tracking-wider shadow-xs">
-                  Raspored Studija
-                </span>
-                <div
-                  title="Veza sa lokalnim StudioBridge hardverom"
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
-                    isBridgeOnline ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-100 text-slate-600 border-slate-300"
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${isBridgeOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-                  <span>{isBridgeOnline ? "StudioBridge Online" : "StudioBridge Offline"}</span>
-                </div>
-              </div>
-              <h1 className="text-xl md:text-2xl font-black text-slate-900">
-                {studioName || "Studio TAF • Režijski Kalendar"}
-              </h1>
-              <p className="text-xs text-slate-600 mt-0.5">
-                Odaberite dan u kalendaru i kliknite na rezervisani termin za ulazak u režiju
-              </p>
-            </div>
+        <div className="bg-white/95 border border-teal-200/80 rounded-2xl px-6 py-4 shadow-sm backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+              <span>{studioName || "Studio TAF"} - Kalendar</span>
+              <span
+                title="Dnevni i mjesečni pregled režijskih termina. Kliknite na bilo koji zauzeti termin za ulazak u studio pult."
+                className="cursor-help text-slate-400 hover:text-teal-600 transition-colors"
+              >
+                <Info className="w-4 h-4" />
+              </span>
+            </h1>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Elegant Studio-Light Integrated Clock */}
-            <div className="bg-white border border-teal-300/80 text-slate-900 rounded-2xl px-5 py-3 shadow-sm flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shadow-inner">
-                <Clock className="w-5 h-5 text-teal-600" />
+            <div className="bg-white border border-teal-300/80 text-slate-900 rounded-xl px-4 py-2 shadow-sm flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shadow-inner">
+                <Clock className="w-4 h-4 text-teal-600" />
               </div>
               <div>
-                <div className="font-mono text-2xl font-black tracking-tight text-slate-900" suppressHydrationWarning>
+                <div className="font-mono text-xl font-black tracking-tight text-slate-900 leading-none" suppressHydrationWarning>
                   {timeFormatted}
                 </div>
-                <div className="text-xs font-semibold text-teal-800" suppressHydrationWarning>
+                <div className="text-[11px] font-semibold text-teal-800 mt-0.5 leading-none" suppressHydrationWarning>
                   {capitalizedDay}, {dateFormatted}
                 </div>
               </div>
             </div>
 
-            {/* Direct Enter Studio Button (Always accessible) */}
+            {/* Diskretno dugme za brzi ulazak u studio */}
             <button
               onClick={() => {
                 const targetId = activeSession?.id || (sessions.length > 0 ? sessions[0].id : "taf-coca-cola-2026");
                 onEnterStudio(targetId);
               }}
-              className="py-3 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-md shadow-slate-900/20 transition-all cursor-pointer flex items-center gap-2 border border-slate-700"
-              title="Ulazak direktno u režijski pult i mikser studija"
+              title="Brzi ulazak u režiju / studio pult"
+              className="p-2.5 rounded-xl border border-slate-300 hover:border-teal-500 hover:bg-teal-50 text-slate-700 hover:text-teal-900 transition-colors cursor-pointer"
             >
-              <Sliders className="w-4 h-4 text-teal-300" />
-              <span>Uđi u Režiju {activeSession ? `(${activeSession.projectName})` : ""}</span>
+              <Sliders className="w-4 h-4 text-teal-700" />
             </button>
 
             {/* Single Unified "Novi Termin" Button */}
@@ -383,7 +369,7 @@ export default function ReceptionLobby({
                 setNewDate(selectedDateStr);
                 setShowAddModal(true);
               }}
-              className="py-3 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs tracking-wide shadow-md shadow-teal-600/20 transition-all cursor-pointer flex items-center gap-2"
+              className="py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs tracking-wide shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               <span>Novi Termin</span>
@@ -392,10 +378,10 @@ export default function ReceptionLobby({
         </div>
 
         {/* 2. MAIN WORKSPACE: CALENDAR (LEFT) + 24-HOUR DAY SCHEDULE (RIGHT) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="flex flex-col lg:flex-row gap-4 items-start w-full">
 
           {/* LEFT COLUMN: MONTH CALENDAR GRID */}
-          <div className="lg:col-span-5 bg-white/95 border border-teal-200/80 rounded-3xl p-5 shadow-sm space-y-4">
+          <div className="w-full lg:w-[340px] xl:w-[380px] shrink-0 bg-white/95 border border-teal-200/80 rounded-2xl p-4 shadow-sm space-y-3">
             {/* Month Header & Controls */}
             <div className="flex items-center justify-between border-b border-teal-100 pb-3">
               <div className="flex items-center gap-2">
@@ -507,16 +493,16 @@ export default function ReceptionLobby({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: 24-HOUR DAY SCHEDULE MATRIX (00:00 - 23:00) */}
-          <div className="lg:col-span-7 bg-white/95 border border-teal-200/80 rounded-3xl p-6 shadow-sm space-y-4">
+          {/* RIGHT COLUMN: 24-HOUR DAY SCHEDULE MATRIX (00:00 - 23:00) - 3 KOLONE, BEZ SKROLA */}
+          <div className="flex-1 min-w-0 bg-white/95 border border-teal-200/80 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
             {/* Day Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-100 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-100 pb-3">
               <div>
                 <div className="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
                   <CalendarDays className="w-4 h-4 text-teal-600" />
                   <span>Dnevni Raspored (24 Sata)</span>
                 </div>
-                <h3 className="text-lg font-black text-slate-900">
+                <h3 className="text-base sm:text-lg font-black text-slate-900">
                   {capitalizedSelectedDate}
                 </h3>
               </div>
@@ -524,7 +510,7 @@ export default function ReceptionLobby({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => openAddModalForHour(12)}
-                  className="px-3.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-300 text-teal-900 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-300 text-teal-900 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Zakaži u ovaj dan</span>
@@ -532,66 +518,61 @@ export default function ReceptionLobby({
               </div>
             </div>
 
-            {/* 24-HOUR BOX MATRIX (24 KOCKICE ZA SVAKI SAT 00h - 23h) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[580px] overflow-y-auto pr-1 scrollbar-thin">
+            {/* 24-HOUR BOX MATRIX - 3 KOLONE, FIT BEZ SKROLA */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
               {Array.from({ length: 24 }, (_, hour) => {
                 const sessionForSlot = getSessionForHour(hour);
                 const hourFormatted = `${hour.toString().padStart(2, "0")}:00`;
                 const nextHourFormatted = `${((hour + 1) % 24).toString().padStart(2, "0")}:00`;
 
                 if (sessionForSlot) {
-                  // BOOKED / RESERVED SLOT - HIGHLIGHTED IN COLOR
+                  // BOOKED / RESERVED SLOT - KOMPAKTNA KARTICA SA OSNOVNIM INFO
                   const isActive = sessionForSlot.id === activeSession?.id;
 
                   return (
                     <div
                       key={hour}
                       onClick={() => onEnterStudio(sessionForSlot.id)}
-                      title="Kliknite za ulazak u režiju ovog termina"
-                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group shadow-sm hover:shadow-md ${
+                      title="Kliknite za ulazak u studio"
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group shadow-xs hover:shadow-md ${
                         isActive
-                          ? "bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-400 ring-2 ring-teal-400/30"
-                          : "bg-teal-50/70 border-teal-300 hover:border-teal-500 hover:bg-teal-100/60"
+                          ? "bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-400 ring-1 ring-teal-400"
+                          : "bg-teal-50/80 border-teal-300 hover:border-teal-500 hover:bg-teal-100/70"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center justify-between gap-1 mb-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-xs font-black text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-300 shadow-2xs">
+                          <span className="font-mono text-[11px] font-black text-teal-950 bg-white px-1.5 py-0.5 rounded border border-teal-300 shadow-2xs">
                             {hourFormatted} - {nextHourFormatted}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-700 text-white shadow-2xs">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-700 text-white shadow-2xs">
                             ● ZAUZETO
                           </span>
                         </div>
 
                         {sessionForSlot.isDoorOpen ? (
-                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300">
-                            <DoorOpen className="w-3 h-3 text-emerald-600" />
-                            <span>Vrata otvorena</span>
+                          <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 border border-emerald-300">
+                            <DoorOpen className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>Otvoreno</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-300">
-                            <DoorClosed className="w-3 h-3 text-amber-600" />
+                          <span className="text-[9px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 border border-amber-300">
+                            <DoorClosed className="w-2.5 h-2.5 text-amber-600" />
                             <span>Pred vratima</span>
                           </span>
                         )}
                       </div>
 
                       <div className="my-1">
-                        <h4 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-teal-900">
+                        <h4 className="text-xs font-bold text-slate-900 leading-snug group-hover:text-teal-900 truncate" title={sessionForSlot.projectName}>
                           {sessionForSlot.projectName}
                         </h4>
-                        <div className="text-[11px] text-slate-600 mt-0.5 flex flex-wrap gap-x-2">
-                          <span>Naručilac: <strong className="text-slate-900">{sessionForSlot.clientName}</strong></span>
-                          <span>•</span>
-                          <span>Spiker: <strong className="text-teal-700">{sessionForSlot.speakerName}</strong></span>
-                        </div>
                       </div>
 
-                      <div className="pt-2 border-t border-teal-200/60 flex items-center justify-between mt-1">
-                        <span className="text-[11px] font-bold text-teal-800 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                          <Play className="w-3 h-3 fill-current" />
-                          <span>Klikni za ulazak u režiju</span>
+                      <div className="pt-1.5 border-t border-teal-200/60 flex items-center justify-between text-[10px]">
+                        <span className="font-bold text-teal-800 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          <span>Klikni za ulazak</span>
                         </span>
 
                         <button
@@ -600,12 +581,12 @@ export default function ReceptionLobby({
                             handleCopyLink(sessionForSlot.id, "agency_tenant");
                           }}
                           title="Kopiraj link za klijenta"
-                          className="p-1 rounded-md bg-white hover:bg-teal-50 border border-teal-200 text-teal-800 text-xs transition-colors"
+                          className="p-1 rounded bg-white hover:bg-teal-50 border border-teal-200 text-teal-800 transition-colors"
                         >
                           {copiedId === sessionForSlot.id ? (
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <CheckCircle className="w-3 h-3 text-emerald-600" />
                           ) : (
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-3 h-3" />
                           )}
                         </button>
                       </div>
@@ -613,24 +594,24 @@ export default function ReceptionLobby({
                   );
                 }
 
-                // EMPTY / AVAILABLE HOUR SLOT
+                // EMPTY / AVAILABLE HOUR SLOT - KOMPAKTAN
                 return (
                   <div
                     key={hour}
                     onClick={() => openAddModalForHour(hour)}
-                    className="p-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 hover:bg-teal-50/40 hover:border-teal-300 transition-all cursor-pointer flex items-center justify-between text-slate-500 hover:text-teal-900 group"
+                    className="p-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 hover:bg-teal-50/40 hover:border-teal-300 transition-all cursor-pointer flex items-center justify-between text-slate-500 hover:text-teal-900 group"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-semibold text-slate-600 group-hover:text-teal-900">
                         {hourFormatted}
                       </span>
                       <span className="text-xs text-slate-400 group-hover:text-teal-700 font-medium">
-                        Slobodan termin
+                        Slobodno
                       </span>
                     </div>
 
-                    <div className="w-6 h-6 rounded-lg bg-white border border-slate-200 group-hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white flex items-center justify-center transition-all text-slate-400 shadow-2xs">
-                      <Plus className="w-3.5 h-3.5" />
+                    <div className="w-5 h-5 rounded-md bg-white border border-slate-200 group-hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white flex items-center justify-center transition-all text-slate-400 shadow-2xs">
+                      <Plus className="w-3 h-3" />
                     </div>
                   </div>
                 );
