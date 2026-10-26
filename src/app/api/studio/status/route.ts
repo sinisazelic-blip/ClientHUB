@@ -61,7 +61,8 @@ export interface SessionItem {
 // Global in-memory state
 let bridgeStatus = {
   isOnline: true,
-  studioName: "",
+  studioName: "Studio TAF",
+  directorPin: "2424",
   language: "bs",
   lastSeen: Date.now(),
   ip: "127.0.0.1",
@@ -216,12 +217,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, roleTalkbacks });
     }
 
+    // Verify Director PIN against active studio's configured PIN
+    if (body.action === "VERIFY_DIRECTOR_PIN") {
+      const pin = String(body.pin || "").trim();
+      const currentPin = (bridgeStatus.directorPin || "2424").trim();
+      const valid = pin.length > 0 && pin === currentPin;
+      return NextResponse.json({ success: true, valid });
+    }
+
     // Heartbeat from StudioBridge
     if (body.type === "HEARTBEAT" || typeof body.isOnline === "boolean") {
       bridgeStatus = {
         isOnline: Boolean(body.isOnline),
         studioName: typeof body.studioName === "string" ? body.studioName : bridgeStatus.studioName,
         language: typeof body.language === "string" ? body.language : bridgeStatus.language,
+        directorPin: typeof body.directorPin === "string" && body.directorPin.trim() ? body.directorPin.trim() : bridgeStatus.directorPin,
         lastSeen: Date.now(),
         ip: req.headers.get("x-forwarded-for") || "127.0.0.1",
       };

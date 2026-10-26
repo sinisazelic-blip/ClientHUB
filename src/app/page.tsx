@@ -244,18 +244,43 @@ export default function ClientHubPage() {
       const pinParam = params.get("pin") || params.get("token");
 
       const storedAuth = localStorage.getItem("fluxax_director_auth") === "true";
-      const hasValidPin = pinParam === "2424" || storedAuth;
 
-      if (hasValidPin) {
+      const processDirectorAuth = () => {
         setIsDirectorAuth(true);
         localStorage.setItem("fluxax_director_auth", "true");
+        if (params.get("view") === "calendar" || params.get("view") === "director" || params.get("role") === "studio_director") {
+          setShowLandingPage(false);
+          setCurrentRole("studio_director");
+          if (params.get("view") === "studio") {
+            setIsInStudio(true);
+          }
+        }
+      };
+
+      if (storedAuth) {
+        processDirectorAuth();
+      }
+
+      if (pinParam) {
+        fetch("/api/studio/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "VERIFY_DIRECTOR_PIN", pin: pinParam }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.valid) {
+              processDirectorAuth();
+            }
+          })
+          .catch(() => {});
       }
 
       if (sessionParam) {
         setShowLandingPage(false);
         setIsInStudio(true);
         const roleParam = (params.get("role") as UserRole) || "guest_participant";
-        if (roleParam === "studio_director" && !hasValidPin) {
+        if (roleParam === "studio_director" && !storedAuth && !pinParam) {
           setCurrentRole("guest_participant");
         } else {
           setCurrentRole(roleParam);
@@ -265,13 +290,7 @@ export default function ClientHubPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "SWITCH_SESSION", sessionId: sessionParam }),
         }).then(fetchStatus);
-      } else if (hasValidPin && (params.get("view") === "calendar" || params.get("view") === "director" || params.get("role") === "studio_director")) {
-        setShowLandingPage(false);
-        setCurrentRole("studio_director");
-        if (params.get("view") === "studio") {
-          setIsInStudio(true);
-        }
-      } else {
+      } else if (!storedAuth && !pinParam) {
         setShowLandingPage(true);
         setCurrentRole("guest_participant");
       }
@@ -304,22 +323,33 @@ export default function ClientHubPage() {
   };
 
   const handleJoinWithCode = async (code: string) => {
-    const clean = code.trim().toLowerCase();
+    const clean = code.trim();
+    if (!clean) return;
 
-    // Check if entered code is the Director Master PIN!
-    if (clean === "2424") {
-      setIsDirectorAuth(true);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("fluxax_director_auth", "true");
+    // Check if entered code matches the Studio Director PIN via secure backend check
+    try {
+      const pinRes = await fetch("/api/studio/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "VERIFY_DIRECTOR_PIN", pin: clean }),
+      });
+      const pinData = await pinRes.json();
+      if (pinData?.valid) {
+        setIsDirectorAuth(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("fluxax_director_auth", "true");
+        }
+        setShowLandingPage(false);
+        setCurrentRole("studio_director");
+        setIsInStudio(false);
+        return;
       }
-      setShowLandingPage(false);
-      setCurrentRole("studio_director");
-      setIsInStudio(false);
-      return;
-    }
+    } catch (_) {}
 
+    // Otherwise look up session IDs and project names
+    const cleanLower = clean.toLowerCase();
     const target = sessions.find(
-      (s) => s.id.toLowerCase() === clean || s.projectName.toLowerCase().includes(clean)
+      (s) => s.id.toLowerCase() === cleanLower || s.projectName.toLowerCase().includes(cleanLower)
     );
     if (target) {
       setActiveSession(target);
@@ -339,21 +369,33 @@ export default function ClientHubPage() {
     }
   };
 
-  const handleVerifyPin = (e?: React.FormEvent) => {
+  const handleVerifyPin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (pinInput.trim() === "2424") {
-      setIsDirectorAuth(true);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("fluxax_director_auth", "true");
+    const pin = pinInput.trim();
+    if (!pin) return;
+    try {
+      const res = await fetch("/api/studio/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "VERIFY_DIRECTOR_PIN", pin }),
+      });
+      const data = await res.json();
+      if (data?.valid) {
+        setIsDirectorAuth(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("fluxax_director_auth", "true");
+        }
+        setDirectorPinModalOpen(false);
+        setPinError("");
+        setPinInput("");
+        setShowLandingPage(false);
+        setCurrentRole("studio_director");
+        setIsInStudio(false);
+      } else {
+        setPinError("Netačan PIN kod režije. Pristup odbijen.");
       }
-      setDirectorPinModalOpen(false);
-      setPinError("");
-      setPinInput("");
-      setShowLandingPage(false);
-      setCurrentRole("studio_director");
-      setIsInStudio(false);
-    } else {
-      setPinError("Netačan PIN kod režije. Pristup odbijen.");
+    } catch (_) {
+      setPinError("Greška pri komunikaciji sa serverom.");
     }
   };
 
