@@ -399,34 +399,20 @@ export function ClaHardwareConsole({
           </div>
 
           {/* ------------------------------------------------------------------- */}
-          {/* SECTION B: CENTER INFORMATION & ZERO-BLEED STATUS DISPLAY           */}
+          {/* SECTION B: CENTER VIDEO LOOP & STATUS DISPLAY                      */}
           {/* ------------------------------------------------------------------- */}
-          <div className="flex-1 flex flex-col justify-between px-2 sm:px-4 py-1 text-center">
-            {/* Visual Screen Mesh / Perforated Display Box */}
-            <div className="p-4 rounded-xl bg-[#0a0c0f] border border-[#202530] shadow-[inset_0_2px_8px_rgba(0,0,0,0.95)] flex flex-col items-center justify-center relative overflow-hidden h-36">
-              {/* Subtle background radial glow */}
-              <div className="absolute inset-0 bg-gradient-to-b from-teal-500/5 via-transparent to-transparent pointer-events-none" />
-
-              <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-teal-400 mb-1 flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 animate-pulse" />
-                <span>STUDIO AUDIO FEED • LIVE BROADCAST</span>
-              </div>
-
-              <div className="text-xl sm:text-2xl font-mono font-black text-white tracking-tight my-1">
-                STUDIO BROADCAST • 24-BIT FEED
-              </div>
-
-              <div className="text-[11px] font-mono text-stone-400 flex items-center gap-3 mt-1">
-                <span>Latencija: <strong className="text-emerald-400 font-bold">18 ms</strong></span>
-                <span>•</span>
-                <span>Zaštita: <strong className="text-cyan-400 font-bold">Zero-Bleed DSP</strong></span>
-              </div>
-            </div>
-
-            {/* Quick Helper hint */}
-            <div className="text-[10px] text-stone-400 font-sans leading-relaxed mt-3 px-2">
-              Kao klijent, u svojim slušalicama čujete miks spikera i matrice iz režije.  
-              Kada pritisnete dugme za razgovor, vaš glas se automatski šalje u režiju bez odjeka i bez kašnjenja.
+          <div className="flex-1 flex flex-col justify-between items-center px-2 sm:px-4 py-1 text-center">
+            {/* Elegant Vintage Bezel with FluxaX Red Video Loop */}
+            <div className="w-full max-w-md h-48 sm:h-52 rounded-xl bg-black border border-[#202530] shadow-[inset_0_2px_10px_rgba(0,0,0,0.95)] overflow-hidden relative flex items-center justify-center">
+              <video
+                src="/branding/FluxaX animation red.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full h-full object-cover opacity-90"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 pointer-events-none" />
             </div>
 
             {/* Status pills at bottom */}

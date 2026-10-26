@@ -5,6 +5,7 @@ import FluxaxNetLogo, { FluxaxDynamicLiveStreamBadge } from "@/components/Fluxax
 import ReceptionLobby from "@/components/ReceptionLobby";
 import StudioDirectorConsole from "@/components/StudioDirectorConsole";
 import { ClaHardwareConsole } from "@/components/ClaHardwareConsole";
+import PublicLandingPage from "@/components/PublicLandingPage";
 import {
   Tv,
   Mic,
@@ -23,6 +24,7 @@ import {
   CheckCircle,
   XCircle,
   Video,
+  Globe,
 } from "lucide-react";
 import {
   SessionItem,
@@ -105,13 +107,15 @@ const INITIAL_SESSIONS: SessionItem[] = [
 export default function ClientHubPage() {
   const [currentRole, setCurrentRole] = useState<UserRole>("studio_director");
   const [isInStudio, setIsInStudio] = useState<boolean>(false);
+  const [showLandingPage, setShowLandingPage] = useState<boolean>(false);
 
   // Sessions and Active Session state
   const [sessions, setSessions] = useState<SessionItem[]>(INITIAL_SESSIONS);
   const [activeSession, setActiveSession] = useState<SessionItem | null>(INITIAL_SESSIONS[0]);
   const [studioName, setStudioName] = useState<string>("Studio TAF");
 
-  // Separate Talkback / Mic states by role (Naručilac vs Klijent gost)
+  // Separate Talkback / Mic states by role (Naručilac vs Klijent gost vs Režija)
+  const [directorTalkbackOn, setDirectorTalkbackOn] = useState<boolean>(false);
   const [agencyTalkbackOn, setAgencyTalkbackOn] = useState<boolean>(false);
   const [guestTalkbackOn, setGuestTalkbackOn] = useState<boolean>(false);
 
@@ -203,6 +207,9 @@ export default function ClientHubPage() {
         }
 
         if (data.roleTalkbacks) {
+          if (typeof data.roleTalkbacks.studio_director === "boolean") {
+            setDirectorTalkbackOn(data.roleTalkbacks.studio_director);
+          }
           if (currentRole !== "agency_tenant" && typeof data.roleTalkbacks.agency_tenant === "boolean") {
             setAgencyTalkbackOn(data.roleTalkbacks.agency_tenant);
           }
@@ -230,6 +237,9 @@ export default function ClientHubPage() {
       if (roleParam) setCurrentRole(roleParam);
       if (params.get("view") === "studio" || params.get("inStudio") === "true") {
         setIsInStudio(true);
+      }
+      if (params.get("view") === "landing" || params.get("page") === "home") {
+        setShowLandingPage(true);
       }
       const sessionParam = params.get("session");
       if (sessionParam) {
@@ -260,6 +270,29 @@ export default function ClientHubPage() {
 
   const handleExitStudio = () => {
     setIsInStudio(false);
+  };
+
+  const handleJoinWithCode = async (code: string) => {
+    setShowLandingPage(false);
+    const clean = code.trim().toLowerCase();
+    const target = sessions.find(
+      (s) => s.id.toLowerCase() === clean || s.projectName.toLowerCase().includes(clean)
+    );
+    if (target) {
+      setActiveSession(target);
+      setIsInStudio(true);
+      setCurrentRole("guest_participant");
+      try {
+        await fetch("/api/studio/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "SWITCH_SESSION", sessionId: target.id }),
+        });
+        await fetchStatus();
+      } catch (_) {}
+    } else {
+      handleEnterStudio(code);
+    }
   };
 
   const handleSendChat = (e: React.FormEvent) => {
@@ -306,6 +339,15 @@ export default function ClientHubPage() {
 
   const activeSeg =
     activeSession?.segments[clientSegmentIdx] || activeSession?.segments[0];
+
+  if (showLandingPage) {
+    return (
+      <PublicLandingPage
+        onEnterApp={() => setShowLandingPage(false)}
+        onJoinSessionWithCode={handleJoinWithCode}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen studio-light-bg text-slate-800 flex flex-col font-sans">
@@ -363,6 +405,14 @@ export default function ClientHubPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowLandingPage(true)}
+            title="Prikaži javnu prezentacionu početnu stranicu FluxaX portala (fluxax.ba)"
+            className="px-2.5 py-1 rounded-lg border border-teal-200/80 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+          >
+            <Globe className="w-3.5 h-3.5 text-teal-600" />
+            <span className="hidden sm:inline">fluxax.ba Portal</span>
+          </button>
           <FluxaxDynamicLiveStreamBadge className="hidden md:block" />
           <div className="text-[11px] text-teal-900 font-mono font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -395,79 +445,12 @@ export default function ClientHubPage() {
         /* CLIENT / NARUČILAC LIVE STUDIO ROOM - LIGHT TEAL DESIGN */
         activeSession && (
           <div className="flex-1 flex flex-col">
-            {/* Topbar for Client */}
+            {/* Topbar for Client / Naručilac */}
             <header className="bg-white/95 border-b border-teal-200/80 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow-sm backdrop-blur-md">
-              <div className="flex flex-col gap-2 max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-black text-slate-900 leading-tight">
-                    {activeSession.projectName}
-                  </span>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                      currentRole === "agency_tenant"
-                        ? "bg-purple-100 text-purple-800 border-purple-300"
-                        : "bg-teal-100 text-teal-800 border-teal-300"
-                    }`}
-                  >
-                    {currentRole === "agency_tenant" ? "NARUČILAC (ODOBRAVANJE)" : "KLIJENT (SLUŠANJE)"}
-                  </span>
-                  <span className="text-xs text-slate-500 font-medium ml-1">
-                    Spiker: <strong className="text-teal-700">{activeSession.speakerName}</strong>
-                    {studioName ? ` • ${studioName}` : ""}
-                  </span>
-                </div>
-
-                {/* SEQUENTIAL ATTENDEES IN HEADER: Studio -> Naručilac -> Klijenti (Wrap cleanly, NO black bar) */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  {/* 1. Studio Režija */}
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-amber-50/80 border-amber-300 text-amber-950 text-xs shadow-2xs">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="font-bold text-[11px]">Režija (Tonac)</span>
-                  </div>
-
-                  {/* 2. Naručilac */}
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-purple-50/80 border-purple-300 text-purple-950 text-xs shadow-2xs">
-                    <span className="w-2 h-2 rounded-full bg-purple-600" />
-                    <span className="text-[10px] text-purple-700 font-semibold uppercase">Naručilac:</span>
-                    <span className="font-bold text-[11px]">{activeSession.clientName}</span>
-                  </div>
-
-                  {/* 3. Klijenti / Gosti */}
-                  {activeSession.attendees &&
-                    activeSession.attendees
-                      .filter((att) => att.role !== "studio_director")
-                      .map((att) => {
-                        const isAgency = att.role === "agency_tenant";
-                        const isSpeaker = att.role === "speaker";
-
-                        return (
-                          <div
-                            key={att.id}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all text-xs shadow-2xs ${
-                              att.isSpeaking
-                                ? "bg-teal-100/90 border-teal-500 ring-1 ring-teal-400"
-                                : "bg-white border-slate-200 text-slate-800"
-                            }`}
-                          >
-                            <div
-                              className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] ${
-                                isSpeaker
-                                  ? "bg-teal-600 text-white"
-                                  : isAgency
-                                  ? "bg-purple-600 text-white"
-                                  : "bg-slate-700 text-white"
-                              }`}
-                            >
-                              {att.name.charAt(0)}
-                            </div>
-                            <span className="font-bold text-[11px] text-slate-800">{att.name}</span>
-                            <span className="text-[9px] text-slate-500 font-mono">
-                              ({att.company || (isSpeaker ? "Glumac" : "Gost")})
-                            </span>
-                          </div>
-                        );
-                      })}
-                </div>
+              <div className="flex items-center gap-3">
+                <span className="text-base font-black text-slate-900 leading-tight">
+                  {activeSession.projectName}
+                </span>
               </div>
 
               {/* Status Beacon & Exit */}
@@ -493,109 +476,107 @@ export default function ClientHubPage() {
               </div>
             </header>
 
-            {/* Client Studio Body */}
-            <main className="flex-1 p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: Visual Screen, Scenario & Audio Trezor */}
-              <div className="lg:col-span-8 space-y-6">
+            {/* Client Studio Body - Full Dynamic Width */}
+            <main className="flex-1 p-4 sm:p-6 w-full flex flex-col xl:flex-row gap-5 items-start">
+              {/* Left Column: Visual Screen / Hardware Console, Scenario & Audio Trezor */}
+              <div className="flex-1 min-w-0 space-y-5 w-full">
 
-                {/* DOMINANT LARGE VIDEO SCREENING PLAYER FOR CLIENT & NARUČILAC */}
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
-                  {/* Player Topbar */}
-                  <div className="bg-slate-900/90 border-b border-slate-800 px-5 py-3 flex items-center justify-between backdrop-blur-md">
-                    <div className="flex items-center gap-2.5">
-                      <Tv className="w-4 h-4 text-purple-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
-                        Video Screening Uživo • 1080p DaVinci / Premiere Feed
-                      </span>
-                      <span className="text-[10px] font-mono text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded border border-purple-700 hidden sm:inline-block">
-                        Ultra-Niska Latencija (LAN / WebRTC)
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {/* Real-time Timecode Display */}
-                      <div className="font-mono text-xs font-black text-amber-400 bg-black/70 px-3 py-1 rounded-lg border border-amber-500/40 shadow-inner">
-                        TC: 01:24:12:08
-                      </div>
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-[10px] font-bold">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>AUDIO & VIDEO U SINHRONU</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* High-Resolution Dominant Video Screen */}
-                  <div className="aspect-video w-full bg-black relative flex items-center justify-center overflow-hidden min-h-[360px] sm:min-h-[440px]">
-                    <div className="text-center p-8 max-w-lg space-y-3">
-                      <div className="w-16 h-16 rounded-2xl bg-purple-900/30 border border-purple-700/50 text-purple-400 flex items-center justify-center mx-auto shadow-inner">
-                        <Tv className="w-8 h-8 opacity-90 animate-pulse" />
-                      </div>
-                      <h3 className="text-base font-bold text-white">
-                        {activeSession.projectName}
-                      </h3>
-                      <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
-                        Slika i zvuk emituju se direktno iz montažnog programa režije u realnom vremenu (1080p, 48 kHz / 24-bit).
-                      </p>
-                      <div className="pt-2 flex items-center justify-center gap-2">
-                        <span className="px-3 py-1 rounded-full bg-purple-950/80 border border-purple-600 text-purple-200 text-xs font-mono font-bold">
-                          Spiker: {activeSession.speakerName}
+                {/* AUDIO (RADIO) VS VIDEO SCREENING MODE */}
+                {activeSession.focusMode === "video" || activeSession.videoEnabled ? (
+                  /* 1. COMPACT VIDEO SCREENING PLAYER (~20% smaller, unobstructed preview) */
+                  <div className="w-full max-w-4xl bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-xl relative flex flex-col">
+                    {/* Player Topbar */}
+                    <div className="bg-slate-900/90 border-b border-slate-800 px-5 py-2.5 flex items-center justify-between backdrop-blur-md">
+                      <div className="flex items-center gap-2.5">
+                        <Tv className="w-4 h-4 text-purple-400" />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">
+                          Video Screening Uživo • 1080p Stream
                         </span>
-                        <span className="px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono">
-                          Zero-Bleed Mix-Minus
+                        <span className="text-[10px] font-mono text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded border border-purple-700 hidden sm:inline-block">
+                          Ultra-Niska Latencija (LAN / WebRTC)
                         </span>
                       </div>
                     </div>
 
-                    {/* Overlaid REC Beacon if ON AIR */}
-                    {activeSession.isOnAir && (
-                      <div className="absolute top-4 left-4 bg-red-600/90 text-white text-[11px] font-bold font-mono px-3.5 py-1.5 rounded-full backdrop-blur-md flex items-center gap-2 border border-red-400 shadow-lg animate-pulse">
-                        <span className="w-2.5 h-2.5 rounded-full bg-white" />
-                        <span>● REC ON AIR - SNIMA SE</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Player Bottom Control & Audio Listening Strip */}
-                  <div className="bg-slate-900/95 border-t border-slate-800 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
-                    <div className="flex items-center gap-4">
-                      {/* Talkback Push-to-Talk Button for Client / Agency */}
-                      <button
-                        onClick={() => handleCurrentTalkbackToggle(!isCurrentTalkbackOn)}
-                        className={`py-2 px-5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 border shadow-sm ${
-                          isCurrentTalkbackOn
-                            ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 shadow-amber-500/20"
-                            : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
-                        }`}
-                      >
-                        {isCurrentTalkbackOn ? <Mic className="w-4 h-4 fill-current text-slate-950" /> : <MicOff className="w-4 h-4 text-slate-400" />}
-                        <span>{isCurrentTalkbackOn ? "TALKBACK UKLJUČEN (Govorite)" : "UKLJUČI MIKROFON (Talkback)"}</span>
-                      </button>
-
-                      <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium">
-                        <span>Režim:</span>
-                        <span className="text-slate-200 font-bold">
-                          {currentRole === "agency_tenant" ? "Naručilac (Vodi snimanje & odobrava)" : "Klijent (Sluša & komentariše)"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Client Phones Volume Slider */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-400 font-medium">Glasnoća slušanja:</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={activeConsole.phonesVol}
-                        onChange={(e) => updateActiveConsole({ phonesVol: Number(e.target.value) })}
-                        className="w-28 accent-teal-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
+                    {/* Compact Unobstructed Video Screen */}
+                    <div className="aspect-video w-full bg-black relative flex items-center justify-center overflow-hidden max-h-[370px]">
+                      <video
+                        src="/branding/FluxaX animation red.mp4"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
                       />
-                      <span className="font-mono text-xs font-bold text-teal-400 w-8">
-                        {activeConsole.phonesVol}%
-                      </span>
+
+                      {/* Overlaid REC Beacon if ON AIR */}
+                      {activeSession.isOnAir && (
+                        <div className="absolute top-3 left-3 bg-red-600/90 text-white text-[10px] font-bold font-mono px-3 py-1 rounded-full backdrop-blur-md flex items-center gap-1.5 border border-red-400 shadow-lg animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-white" />
+                          <span>● REC ON AIR - SNIMA SE</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Player Bottom Control & Audio Listening Strip */}
+                    <div className="bg-slate-900/95 border-t border-slate-800 px-5 py-2.5 flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
+                      <div className="flex items-center gap-4">
+                        {/* Talkback Push-to-Talk Button for Client / Agency */}
+                        <button
+                          onClick={() => handleCurrentTalkbackToggle(!isCurrentTalkbackOn)}
+                          className={`py-2 px-5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 border shadow-sm ${
+                            isCurrentTalkbackOn
+                              ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 shadow-amber-500/20"
+                              : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                          }`}
+                        >
+                          {isCurrentTalkbackOn ? <Mic className="w-4 h-4 fill-current text-slate-950" /> : <MicOff className="w-4 h-4 text-slate-400" />}
+                          <span>{isCurrentTalkbackOn ? "TALKBACK UKLJUČEN (Govorite)" : "UKLJUČI MIKROFON (Talkback)"}</span>
+                        </button>
+                      </div>
+
+                      {/* Client Phones Volume Slider */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400 font-medium">Glasnoća slušanja:</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={activeConsole.phonesVol}
+                          onChange={(e) => updateActiveConsole({ phonesVol: Number(e.target.value) })}
+                          className="w-28 accent-teal-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
+                        />
+                        <span className="font-mono text-xs font-bold text-teal-400 w-8">
+                          {activeConsole.phonesVol}%
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  /* 2. VINTAGE CLE HARDWARE CONSOLE FOR RADIO (AUDIO-ONLY) SESSIONS */
+                  <ClaHardwareConsole
+                    studioName={studioName || "Studio TAF"}
+                    projectName={activeSession.projectName}
+                    speakerName={activeSession.speakerName}
+                    isOnAir={activeSession.isOnAir}
+                    isTalkbackActive={isCurrentTalkbackOn}
+                    onTalkbackToggle={(active) => handleCurrentTalkbackToggle(active)}
+                    micGain={activeConsole.micGain}
+                    onMicGainChange={(gain) => updateActiveConsole({ micGain: gain })}
+                    phonesVol={activeConsole.phonesVol}
+                    onPhonesVolumeChange={(vol) => updateActiveConsole({ phonesVol: vol })}
+                    isMuted={activeConsole.isMuted}
+                    onMuteToggle={(muted) => updateActiveConsole({ isMuted: muted })}
+                    isDimmed={activeConsole.isDimmed}
+                    onDimToggle={(dimmed) => updateActiveConsole({ isDimmed: dimmed })}
+                    autoDuck={activeConsole.autoDuck}
+                    onAutoDuckToggle={(duck) => updateActiveConsole({ autoDuck: duck })}
+                    monitorMode={activeConsole.monitorMode}
+                    onMonitorModeToggle={(m) => updateActiveConsole({ monitorMode: m })}
+                    hdCodec={activeConsole.hdCodec}
+                    onHdCodecToggle={(hd) => updateActiveConsole({ hdCodec: hd })}
+                  />
+                )}
 
                 {/* Scenario & Takes with Approval Controls */}
                 <div className="bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm">
@@ -718,7 +699,8 @@ export default function ClientHubPage() {
                 </div>
 
                 {/* Project Share / Audio Trezor in Client View */}
-                {activeSession.projectFiles && activeSession.projectFiles.length > 0 && (
+                {/* Project Share / Audio Trezor - SAMO ZA NARUČIOCA (Klijent nema download) */}
+                {currentRole === "agency_tenant" && activeSession.projectFiles && activeSession.projectFiles.length > 0 && (
                   <div className="bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm">
                     <div className="flex items-center justify-between pb-3 border-b border-teal-100 mb-4">
                       <div className="flex items-center gap-2">
@@ -775,57 +757,186 @@ export default function ClientHubPage() {
 
               </div>
 
-              {/* Right Column: Live Chat with Režija */}
-              <div className="lg:col-span-4 bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-[520px]">
-                <div className="flex items-center justify-between pb-3 border-b border-teal-100">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    <MessageSquare className="w-4 h-4 text-teal-600" />
-                    <span>Režijski Chat & Sugestije</span>
+              {/* RIGHT SIDEBAR: UČESNICI U SNIMANJU (VERTIKALNO KAO U STUDIJU) + CHAT */}
+              <aside className="w-full xl:w-80 shrink-0 flex flex-col gap-4">
+                {/* 1. UČESNICI U SNIMANJU */}
+                <div className="bg-white border border-teal-200/80 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                  <div className="flex items-center justify-between border-b border-teal-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-teal-600" />
+                      <span className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                        Učesnici u Snimanju
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 font-mono text-[10px] font-bold">
+                      {(activeSession.attendees?.length || 0) + 1}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-teal-700 font-mono font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                    LIVE
-                  </span>
-                </div>
 
-                {/* Messages list */}
-                <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
-                  {chatMessages.map((msg, idx) => (
+                  <div className="space-y-2">
+                    {/* A. Studio (Tonac) */}
                     <div
-                      key={idx}
-                      className={`p-3 rounded-xl text-xs ${
-                        msg.isDirector
-                          ? "bg-amber-50 border border-amber-200 text-amber-900"
-                          : "bg-teal-50/50 border border-teal-100 text-slate-800"
+                      className={`p-2.5 rounded-xl border transition-all flex items-center justify-between ${
+                        directorTalkbackOn
+                          ? "bg-amber-50/90 border-amber-400 ring-2 ring-amber-400/50 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-800"
                       }`}
                     >
-                      <div className="flex justify-between items-center mb-1 text-[10px]">
-                        <strong className={msg.isDirector ? "text-amber-800 font-bold" : "text-teal-800 font-bold"}>
-                          {msg.sender}
-                        </strong>
-                        <span className="font-mono text-slate-400">{msg.time}</span>
+                      <div className="flex items-center gap-2.5">
+                        <div className="relative">
+                          <div className="w-7 h-7 rounded-full bg-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                            S
+                          </div>
+                          {directorTalkbackOn && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-500 border-2 border-white rounded-full animate-pulse" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-xs text-slate-900">Studio</span>
+                            <span className="text-[9px] font-mono px-1 rounded bg-amber-100 text-amber-900 font-semibold">Tonac</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-mono">Glavni pult</span>
+                        </div>
                       </div>
-                      <p className="leading-relaxed">{msg.text}</p>
+
+                      {/* Speaking indicator / Audio bars */}
+                      {directorTalkbackOn ? (
+                        <div className="flex items-center gap-0.5" title="Studio govori">
+                          <span className="w-1 h-3 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <span className="w-1 h-4 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <span className="w-1 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </div>
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-slate-300" />
+                      )}
                     </div>
-                  ))}
+
+                    {/* B. Ostali učesnici: Naručilac, Spiker, Klijenti */}
+                    {activeSession.attendees &&
+                      activeSession.attendees
+                        .filter((att) => att.role !== "studio_director")
+                        .map((att) => {
+                          const isAgency = att.role === "agency_tenant";
+                          const isSpeaker = att.role === "speaker";
+                          const isSelf = (currentRole === "agency_tenant" && isAgency) || (currentRole === "guest_participant" && !isAgency && !isSpeaker);
+                          const isSpeaking = att.isSpeaking || (isSelf && isCurrentTalkbackOn) || (isAgency && agencyTalkbackOn) || (!isAgency && !isSpeaker && guestTalkbackOn);
+
+                          return (
+                            <div
+                              key={att.id}
+                              className={`p-2.5 rounded-xl border transition-all flex items-center justify-between ${
+                                isSpeaking
+                                  ? "bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/50 shadow-sm shadow-emerald-500/10"
+                                  : "bg-slate-50/60 border-slate-200 text-slate-800 hover:border-slate-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="relative">
+                                  <div
+                                    className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center text-white shadow-xs ${
+                                      isSpeaker
+                                        ? "bg-teal-600"
+                                        : isAgency
+                                        ? "bg-purple-600"
+                                        : "bg-slate-700"
+                                    }`}
+                                  >
+                                    {att.name.charAt(0)}
+                                  </div>
+                                  {isSpeaking && (
+                                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full animate-pulse" />
+                                  )}
+                                </div>
+
+                                <div className="leading-tight">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-xs text-slate-900">{att.name}</span>
+                                    {isAgency && (
+                                      <span className="text-[9px] font-mono px-1 rounded bg-purple-100 text-purple-900 font-semibold">
+                                        Naručilac
+                                      </span>
+                                    )}
+                                    {isSpeaker && (
+                                      <span className="text-[9px] font-mono px-1 rounded bg-teal-100 text-teal-900 font-semibold">
+                                        Spiker
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-slate-500 font-mono">
+                                    {att.company || (isSpeaker ? "Glumačka soba" : isAgency ? "Agencija" : "Klijent")}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Speaking Wave Bars */}
+                              {isSpeaking ? (
+                                <div className="flex items-center gap-0.5" title="Govori uživo">
+                                  <span className="w-1 h-3 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                                  <span className="w-1 h-4 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                                  <span className="w-1 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                                </div>
+                              ) : (
+                                <span className="w-2 h-2 rounded-full bg-slate-300" />
+                              )}
+                            </div>
+                          );
+                        })}
+                  </div>
                 </div>
 
-                {/* Chat input form */}
-                <form onSubmit={handleSendChat} className="pt-3 border-t border-teal-100 flex gap-2">
-                  <input
-                    type="text"
-                    value={newChatText}
-                    onChange={(e) => setNewChatText(e.target.value)}
-                    placeholder="Upišite sugestiju ili napomenu..."
-                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:border-teal-500 font-medium"
-                  />
-                  <button
-                    type="submit"
-                    className="p-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white cursor-pointer shadow-sm shadow-teal-600/20"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-              </div>
+                {/* 2. REŽIJSKI CHAT & SUGESTIJE */}
+                <div className="bg-white border border-teal-200/80 rounded-2xl p-4 shadow-sm flex flex-col justify-between h-[420px]">
+                  <div className="flex items-center justify-between pb-3 border-b border-teal-100">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      <MessageSquare className="w-4 h-4 text-teal-600" />
+                      <span>Režijski Chat & Sugestije</span>
+                    </div>
+                    <span className="text-[10px] text-teal-700 font-mono font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      LIVE
+                    </span>
+                  </div>
+
+                  {/* Messages list */}
+                  <div className="flex-1 overflow-y-auto space-y-2.5 py-3 pr-1">
+                    {chatMessages.map((msg, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2.5 rounded-xl text-xs ${
+                          msg.isDirector
+                            ? "bg-amber-50 border border-amber-200 text-amber-900"
+                            : "bg-teal-50/50 border border-teal-100 text-slate-800"
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-1 text-[10px]">
+                          <strong className={msg.isDirector ? "text-amber-800 font-bold" : "text-teal-800 font-bold"}>
+                            {msg.sender}
+                          </strong>
+                          <span className="font-mono text-slate-400">{msg.time}</span>
+                        </div>
+                        <p className="leading-relaxed">{msg.text}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Chat input form */}
+                  <form onSubmit={handleSendChat} className="pt-3 border-t border-teal-100 flex gap-2">
+                    <input
+                      type="text"
+                      value={newChatText}
+                      onChange={(e) => setNewChatText(e.target.value)}
+                      placeholder="Upišite sugestiju ili napomenu..."
+                      className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:border-teal-500 font-medium"
+                    />
+                    <button
+                      type="submit"
+                      className="p-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white cursor-pointer shadow-sm shadow-teal-600/20"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </aside>
             </main>
           </div>
         )

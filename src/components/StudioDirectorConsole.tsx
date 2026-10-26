@@ -32,7 +32,12 @@ import {
   UploadCloud,
   CheckCircle2,
   AlertTriangle,
+  Link2,
+  Copy,
+  Check,
+  Wrench,
 } from "lucide-react";
+import StudioPreFlightModal from "@/components/StudioPreFlightModal";
 import {
   SessionItem,
   SessionTake,
@@ -73,7 +78,7 @@ export default function StudioDirectorConsole({
   // Focus Mode: Audio Focus vs Video Screening Focus (Videographer Son's feature)
   const [focusMode, setFocusMode] = useState<"audio" | "video">(session.focusMode || "audio");
 
-  // Komunikacijski nivoi (čuvaju nivoe RME izlaza)
+  // Komunikacijski nivoi (čuvaju nivoe audio interfejs izlaza)
   const [volCR, setVolCR] = useState<number>(85);
   const [volBooth, setVolBooth] = useState<number>(75);
   const [volClient, setVolClient] = useState<number>(90);
@@ -105,6 +110,21 @@ export default function StudioDirectorConsole({
     agency_tenant?: boolean;
     guest_participant?: boolean;
   }>({});
+
+  // Studio Setup / Pre-Flight Diagnostic Modal
+  const [showPreFlightModal, setShowPreFlightModal] = useState<boolean>(false);
+
+  // Invite Links Generator Modal
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [copiedLinkType, setCopiedLinkType] = useState<string | null>(null);
+
+  const handleCopyInviteLink = (role: "agency_tenant" | "guest_participant") => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://fluxax.ba";
+    const link = `${origin}/?session=${session.id}&role=${role}`;
+    navigator.clipboard.writeText(link);
+    setCopiedLinkType(role);
+    setTimeout(() => setCopiedLinkType(null), 2500);
+  };
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -447,7 +467,7 @@ export default function StudioDirectorConsole({
                   ? "bg-purple-600 text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
               }`}
-              title="Snimanje sa video podlogom (Sinkronizacija na sliku / TV spot / DaVinci preview)"
+              title="Snimanje sa video podlogom (Sinkronizacija na sliku / TV spot / Video preview)"
             >
               <Video className="w-3.5 h-3.5" />
               <span>Video Podloga</span>
@@ -478,6 +498,26 @@ export default function StudioDirectorConsole({
           >
             {isDoorOpen ? <DoorOpen className="w-4 h-4 text-emerald-600" /> : <DoorClosed className="w-4 h-4 text-amber-600" />}
             <span>{isDoorOpen ? "VRATA OTVORENA" : "PRED VRATIMA"}</span>
+          </button>
+
+          {/* Setup & Hardware Kalibracija Studija */}
+          <button
+            onClick={() => setShowPreFlightModal(true)}
+            title="Pre-flight hardverski test i kalibracija studija prije snimanja"
+            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-300"
+          >
+            <Wrench className="w-3.5 h-3.5 text-teal-600" />
+            <span className="hidden sm:inline">Setup Studija</span>
+          </button>
+
+          {/* Pozivni Linkovi za Klijente i Agenciju */}
+          <button
+            onClick={() => setShowInviteModal(true)}
+            title="Generiši i kopiraj pozivne linkove za naručioca i klijente"
+            className="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-teal-300 shadow-2xs"
+          >
+            <Link2 className="w-3.5 h-3.5 text-teal-600" />
+            <span>Pozivnice</span>
           </button>
 
           {/* Explicit Napusti Studio / Završi Sesiju Button with Safe Modal */}
@@ -673,12 +713,9 @@ export default function StudioDirectorConsole({
                   Informativni Video Prikaz
                 </span>
               </div>
-              <div className="font-mono text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                TC: 01:24:12:08
-              </div>
             </div>
 
-            {/* Compact Video Window (Tonac already has editing software on main screen) */}
+            {/* Compact Video Window */}
             <div className="aspect-video w-full bg-slate-950 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-800 shadow-inner my-1">
               {isSharingScreen && screenStream ? (
                 <video
@@ -699,10 +736,10 @@ export default function StudioDirectorConsole({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2.5">
                     <p className="text-[11px] font-bold text-white leading-tight">
-                      DaVinci / Premiere preview
+                      Preview
                     </p>
                     <p className="text-[9px] text-slate-300">
-                      Čeka se dijeljenje montaže
+                      Čeka se dijeljenje ekrana
                     </p>
                   </div>
                 </div>
@@ -730,7 +767,7 @@ export default function StudioDirectorConsole({
                 }`}
               >
                 <Monitor className="w-3 h-3" />
-                <span>{isSharingScreen ? "Zaustavi" : "Dijeli Montažu"}</span>
+                <span>{isSharingScreen ? "Zaustavi" : "Dijeli Ekran"}</span>
               </button>
             </div>
           </div>
@@ -1104,6 +1141,108 @@ export default function StudioDirectorConsole({
                 className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold cursor-pointer shadow-md shadow-red-600/20"
               >
                 Da, Izađi u Kalendar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STUDIO PRE-FLIGHT HARDWARE DIAGNOSTIC MODAL */}
+      <StudioPreFlightModal
+        isOpen={showPreFlightModal}
+        onClose={() => setShowPreFlightModal(false)}
+        studioName="Studio TAF"
+        projectName={session.projectName}
+      />
+
+      {/* INVITE LINKS GENERATOR MODAL */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-teal-200 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-teal-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center">
+                  <Link2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Pozivni Linkovi za Sesiju</h3>
+                  <p className="text-[11px] text-slate-500">{session.projectName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Pošaljite odgovarajući link učesnicima. Klijenti i naručilac se direktno priključuju u browseru bez registracije.
+            </p>
+
+            <div className="space-y-3.5">
+              {/* 1. Link za Naručioca */}
+              <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-950 uppercase tracking-wide">
+                    Link za Naručioca (Agencija)
+                  </span>
+                  <span className="text-[10px] text-purple-700 font-mono font-bold bg-purple-100 px-2 py-0.5 rounded">
+                    Puna prava + Download
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== "undefined" ? window.location.origin : "https://fluxax.ba"}/?session=${session.id}&role=agency_tenant`}
+                    className="flex-1 bg-white border border-purple-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono select-all outline-none"
+                  />
+                  <button
+                    onClick={() => handleCopyInviteLink("agency_tenant")}
+                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
+                  >
+                    {copiedLinkType === "agency_tenant" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedLinkType === "agency_tenant" ? "Kopirano!" : "Kopiraj"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Link za Klijente / Goste */}
+              <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-teal-950 uppercase tracking-wide">
+                    Link za Klijente (Gosti / Slušanje)
+                  </span>
+                  <span className="text-[10px] text-teal-700 font-mono font-bold bg-teal-100 px-2 py-0.5 rounded">
+                    Slušanje + Talkback
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== "undefined" ? window.location.origin : "https://fluxax.ba"}/?session=${session.id}&role=guest_participant`}
+                    className="flex-1 bg-white border border-teal-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono select-all outline-none"
+                  />
+                  <button
+                    onClick={() => handleCopyInviteLink("guest_participant")}
+                    className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
+                  >
+                    {copiedLinkType === "guest_participant" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedLinkType === "guest_participant" ? "Kopirano!" : "Kopiraj"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+              >
+                Zatvori
               </button>
             </div>
           </div>

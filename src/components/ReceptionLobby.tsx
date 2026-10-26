@@ -20,7 +20,9 @@ import {
   Mic,
   CalendarDays,
   Info,
+  Headphones,
 } from "lucide-react";
+import AudioTestModal from "@/components/AudioTestModal";
 import FluxaxNetLogo from "@/components/FluxaxNetLogo";
 import { SessionItem } from "@/app/api/studio/status/route";
 import { format24Time } from "@/lib/formatTime";
@@ -79,6 +81,7 @@ export default function ReceptionLobby({
   const [newDate, setNewDate] = useState(new Date().toISOString().split("T")[0]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isBridgeOnline, setIsBridgeOnline] = useState<boolean>(true);
+  const [showAudioTestModal, setShowAudioTestModal] = useState<boolean>(false);
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -305,11 +308,29 @@ export default function ReceptionLobby({
             </div>
           )}
 
+          {/* PRE-FLIGHT AUDIO TEST BUTTON */}
+          <div className="mb-6">
+            <button
+              onClick={() => setShowAudioTestModal(true)}
+              className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-teal-50 border border-teal-300 text-teal-800 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Headphones className="w-4 h-4 text-teal-600" />
+              <span>Testiraj Slušalice i Mikrofon (Pre-Flight Check)</span>
+            </button>
+          </div>
+
           <div className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5 pt-2 border-t border-teal-100">
             <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
             <span>Client HUB Audio Protocol • Studijska veza ultra-niske latencije</span>
           </div>
         </div>
+
+        {/* Audio Test Modal for Client */}
+        <AudioTestModal
+          isOpen={showAudioTestModal}
+          onClose={() => setShowAudioTestModal(false)}
+          roleName={role === "agency_tenant" ? "Naručilac" : "Klijent"}
+        />
       </div>
     );
   }
@@ -731,6 +752,13 @@ export default function ReceptionLobby({
           </div>
         </div>
       )}
+
+      {/* Audio Test Modal for Calendar Director View */}
+      <AudioTestModal
+        isOpen={showAudioTestModal}
+        onClose={() => setShowAudioTestModal(false)}
+        roleName="Režija"
+      />
     </div>
   );
 }
