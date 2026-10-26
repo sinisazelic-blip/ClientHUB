@@ -25,6 +25,9 @@ import {
   XCircle,
   Video,
   Globe,
+  Key,
+  X,
+  Lock,
 } from "lucide-react";
 import {
   SessionItem,
@@ -105,9 +108,13 @@ const INITIAL_SESSIONS: SessionItem[] = [
 ];
 
 export default function ClientHubPage() {
-  const [currentRole, setCurrentRole] = useState<UserRole>("studio_director");
+  const [currentRole, setCurrentRole] = useState<UserRole>("guest_participant");
   const [isInStudio, setIsInStudio] = useState<boolean>(false);
-  const [showLandingPage, setShowLandingPage] = useState<boolean>(false);
+  const [showLandingPage, setShowLandingPage] = useState<boolean>(true);
+  const [isDirectorAuth, setIsDirectorAuth] = useState<boolean>(false);
+  const [directorPinModalOpen, setDirectorPinModalOpen] = useState<boolean>(false);
+  const [pinInput, setPinInput] = useState<string>("");
+  const [pinError, setPinError] = useState<string>("");
 
   // Sessions and Active Session state
   const [sessions, setSessions] = useState<SessionItem[]>(INITIAL_SESSIONS);
@@ -233,21 +240,40 @@ export default function ClientHubPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const roleParam = params.get("role") as UserRole;
-      if (roleParam) setCurrentRole(roleParam);
-      if (params.get("view") === "studio" || params.get("inStudio") === "true") {
-        setIsInStudio(true);
+      const sessionParam = params.get("session") || params.get("s");
+      const pinParam = params.get("pin") || params.get("token");
+
+      const storedAuth = localStorage.getItem("fluxax_director_auth") === "true";
+      const hasValidPin = pinParam === "2424" || storedAuth;
+
+      if (hasValidPin) {
+        setIsDirectorAuth(true);
+        localStorage.setItem("fluxax_director_auth", "true");
       }
-      if (params.get("view") === "landing" || params.get("page") === "home") {
-        setShowLandingPage(true);
-      }
-      const sessionParam = params.get("session");
+
       if (sessionParam) {
+        setShowLandingPage(false);
+        setIsInStudio(true);
+        const roleParam = (params.get("role") as UserRole) || "guest_participant";
+        if (roleParam === "studio_director" && !hasValidPin) {
+          setCurrentRole("guest_participant");
+        } else {
+          setCurrentRole(roleParam);
+        }
         fetch("/api/studio/status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "SWITCH_SESSION", sessionId: sessionParam }),
         }).then(fetchStatus);
+      } else if (hasValidPin && (params.get("view") === "calendar" || params.get("view") === "director" || params.get("role") === "studio_director")) {
+        setShowLandingPage(false);
+        setCurrentRole("studio_director");
+        if (params.get("view") === "studio") {
+          setIsInStudio(true);
+        }
+      } else {
+        setShowLandingPage(true);
+        setCurrentRole("guest_participant");
       }
     }
   }, []);
@@ -269,18 +295,36 @@ export default function ClientHubPage() {
   };
 
   const handleExitStudio = () => {
-    setIsInStudio(false);
+    if (!isDirectorAuth) {
+      setShowLandingPage(true);
+      setIsInStudio(false);
+    } else {
+      setIsInStudio(false);
+    }
   };
 
   const handleJoinWithCode = async (code: string) => {
-    setShowLandingPage(false);
     const clean = code.trim().toLowerCase();
+
+    // Check if entered code is the Director Master PIN!
+    if (clean === "2424") {
+      setIsDirectorAuth(true);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("fluxax_director_auth", "true");
+      }
+      setShowLandingPage(false);
+      setCurrentRole("studio_director");
+      setIsInStudio(false);
+      return;
+    }
+
     const target = sessions.find(
       (s) => s.id.toLowerCase() === clean || s.projectName.toLowerCase().includes(clean)
     );
     if (target) {
       setActiveSession(target);
       setIsInStudio(true);
+      setShowLandingPage(false);
       setCurrentRole("guest_participant");
       try {
         await fetch("/api/studio/status", {
@@ -291,8 +335,36 @@ export default function ClientHubPage() {
         await fetchStatus();
       } catch (_) {}
     } else {
-      handleEnterStudio(code);
+      alert("Netačan kod sesije ili PIN. Provjerite vašu pozivnicu.");
     }
+  };
+
+  const handleVerifyPin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (pinInput.trim() === "2424") {
+      setIsDirectorAuth(true);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("fluxax_director_auth", "true");
+      }
+      setDirectorPinModalOpen(false);
+      setPinError("");
+      setPinInput("");
+      setShowLandingPage(false);
+      setCurrentRole("studio_director");
+      setIsInStudio(false);
+    } else {
+      setPinError("Netačan PIN kod režije. Pristup odbijen.");
+    }
+  };
+
+  const handleDirectorLogout = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("fluxax_director_auth");
+    }
+    setIsDirectorAuth(false);
+    setCurrentRole("guest_participant");
+    setShowLandingPage(true);
+    setIsInStudio(false);
   };
 
   const handleSendChat = (e: React.FormEvent) => {
@@ -342,10 +414,99 @@ export default function ClientHubPage() {
 
   if (showLandingPage) {
     return (
-      <PublicLandingPage
-        onEnterApp={() => setShowLandingPage(false)}
-        onJoinSessionWithCode={handleJoinWithCode}
-      />
+      <>
+        <PublicLandingPage
+          onEnterApp={() => {
+            if (isDirectorAuth) {
+              setShowLandingPage(false);
+              setCurrentRole("studio_director");
+              setIsInStudio(false);
+            } else {
+              setDirectorPinModalOpen(true);
+            }
+          }}
+          onJoinSessionWithCode={handleJoinWithCode}
+        />
+
+        {/* DIRECTOR PIN MODAL */}
+        {directorPinModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl border border-teal-200 max-w-sm w-full p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-700" />
+
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center text-teal-800">
+                    <Key className="w-5 h-5 text-teal-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">Režijski Pristup</h3>
+                    <p className="text-[11px] text-slate-500">Studio TAF • Režija & Kalendar</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDirectorPinModalOpen(false);
+                    setPinError("");
+                  }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+                Pristup rasporedu i režijskoj konzoli zaštićen je sigurnosnim PIN kodom studija.
+              </p>
+
+              <form onSubmit={handleVerifyPin} className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Unesite PIN Režije:
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    autoFocus
+                    placeholder="••••"
+                    value={pinInput}
+                    onChange={(e) => {
+                      setPinInput(e.target.value);
+                      if (pinError) setPinError("");
+                    }}
+                    className="w-full text-center text-2xl font-mono tracking-widest font-bold py-2.5 px-4 rounded-xl border-2 border-teal-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-100 outline-none transition-all text-slate-900 bg-teal-50/30"
+                  />
+                  {pinError && (
+                    <p className="text-xs text-red-600 font-semibold mt-1.5 text-center">
+                      {pinError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDirectorPinModalOpen(false);
+                      setPinError("");
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Otkaži
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 px-3 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all shadow-md shadow-teal-700/20 cursor-pointer"
+                  >
+                    Otključaj Režiju
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -361,25 +522,26 @@ export default function ClientHubPage() {
               Režim Prikaza:
             </span>
             <div className="inline-flex bg-teal-50/80 p-0.5 rounded-lg border border-teal-200">
-              {/* STUDIO BUTTON: NEVER FORCES EXIT IF ACTIVE SESSION EXISTS */}
-              <button
-                onClick={() => {
-                  setCurrentRole("studio_director");
-                  if (activeSession) {
-                    setIsInStudio(true);
-                  } else if (sessions.length > 0) {
-                    setActiveSession(sessions[0]);
-                    setIsInStudio(true);
-                  }
-                }}
-                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  currentRole === "studio_director"
-                    ? "bg-teal-700 text-white shadow-sm"
-                    : "text-slate-600 hover:text-teal-900"
-                }`}
-              >
-                Studio
-              </button>
+              {isDirectorAuth && (
+                <button
+                  onClick={() => {
+                    setCurrentRole("studio_director");
+                    if (activeSession) {
+                      setIsInStudio(true);
+                    } else if (sessions.length > 0) {
+                      setActiveSession(sessions[0]);
+                      setIsInStudio(true);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                    currentRole === "studio_director"
+                      ? "bg-teal-700 text-white shadow-sm"
+                      : "text-slate-600 hover:text-teal-900"
+                  }`}
+                >
+                  Studio
+                </button>
+              )}
               <button
                 onClick={() => setCurrentRole("agency_tenant")}
                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
@@ -405,6 +567,16 @@ export default function ClientHubPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {isDirectorAuth && (
+            <button
+              onClick={handleDirectorLogout}
+              title="Odjavi se iz režije i zaključaj pristup"
+              className="px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+            >
+              <LogOut className="w-3.5 h-3.5 text-red-600" />
+              <span className="hidden sm:inline">Odjava Režije</span>
+            </button>
+          )}
           <button
             onClick={() => setShowLandingPage(true)}
             title="Prikaži javnu prezentacionu početnu stranicu FluxaX portala (fluxax.ba)"
@@ -425,16 +597,34 @@ export default function ClientHubPage() {
 
       {/* VIEW ROUTING */}
       {!isInStudio ? (
-        /* RECEPTION LOBBY & CALENDAR */
-        <ReceptionLobby
-          role={currentRole}
-          studioName={studioName}
-          sessions={sessions}
-          activeSession={activeSession}
-          onEnterStudio={handleEnterStudio}
-          onRefreshSessions={fetchStatus}
-        />
-      ) : currentRole === "studio_director" ? (
+        isDirectorAuth ? (
+          /* RECEPTION LOBBY & CALENDAR - ONLY FOR AUTHENTICATED DIRECTOR */
+          <ReceptionLobby
+            role={currentRole}
+            studioName={studioName}
+            sessions={sessions}
+            activeSession={activeSession}
+            onEnterStudio={handleEnterStudio}
+            onRefreshSessions={fetchStatus}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-6 text-center">
+            <div className="bg-white rounded-2xl shadow-xl border border-teal-200 p-8 max-w-md">
+              <Key className="w-10 h-10 text-teal-600 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Pristup Kalendaru Ograničen</h3>
+              <p className="text-xs text-slate-600 mb-5 leading-relaxed">
+                Pregled rasporeda i kalendara termina dostupan je isključivo autorizovanoj režiji Studio TAF-a.
+              </p>
+              <button
+                onClick={() => setShowLandingPage(true)}
+                className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md shadow-teal-700/20"
+              >
+                Povratak na Početnu Stranicu
+              </button>
+            </div>
+          </div>
+        )
+      ) : currentRole === "studio_director" && isDirectorAuth ? (
         /* DIRECTOR STUDIO CONSOLE */
         <StudioDirectorConsole
           session={activeSession || sessions[0] || INITIAL_SESSIONS[0]}
