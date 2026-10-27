@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import FluxaxNetLogo, { FluxaxDynamicLiveStreamBadge } from "@/components/FluxaxNetLogo";
 import ReceptionLobby from "@/components/ReceptionLobby";
 import StudioDirectorConsole from "@/components/StudioDirectorConsole";
@@ -28,6 +28,7 @@ import {
   Key,
   X,
   Lock,
+  UploadCloud,
 } from "lucide-react";
 import {
   SessionItem,
@@ -136,6 +137,64 @@ export default function ClientHubPage() {
     monitorMode: "stereo" as "stereo" | "mono",
     hdCodec: true,
   });
+
+  const clientFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [clientExchangeFolder, setClientExchangeFolder] = useState<string>("C:\\Users\\Klijent\\Downloads\\FluxaX");
+  const [isClientUploading, setIsClientUploading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("fluxax_client_folder");
+      if (saved) setClientExchangeFolder(saved);
+    }
+  }, []);
+
+  const handlePickClientFolder = async () => {
+    try {
+      if ("showDirectoryPicker" in window) {
+        const dirHandle = await (window as any).showDirectoryPicker();
+        if (dirHandle && dirHandle.name) {
+          const folderName = "C:\\Downloads\\" + dirHandle.name;
+          setClientExchangeFolder(folderName);
+          localStorage.setItem("fluxax_client_folder", folderName);
+          return;
+        }
+      }
+    } catch (_) {}
+    const manual = window.prompt("Unesite ili potvrdite lokalni folder za razmjenu materijala:", clientExchangeFolder);
+    if (manual && manual.trim()) {
+      setClientExchangeFolder(manual.trim());
+      localStorage.setItem("fluxax_client_folder", manual.trim());
+    }
+  };
+
+  const handleClientUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsClientUploading(true);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+      }
+      formData.append("uploadedBy", "Naručilac (Agencija)");
+      formData.append("sessionId", activeSession?.id || "taf-coca-cola-2026");
+
+      const res = await fetch("/api/studio/upload-file", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchStatus();
+      }
+    } catch (err) {
+      console.error("Client upload error", err);
+    } finally {
+      setIsClientUploading(false);
+      if (clientFileInputRef.current) clientFileInputRef.current.value = "";
+    }
+  };
 
   const [guestConsole, setGuestConsole] = useState({
     micGain: 0,
