@@ -243,19 +243,19 @@ export function PublicLandingPage({
           HERO SECTION WITH LUXURY VIDEO LOOP
       ========================================================================= */}
       <header className="relative min-h-[620px] flex items-center justify-center overflow-hidden border-b border-slate-800 px-6 py-16">
-        {/* Background Video Loop */}
+        {/* Background Video Loop - Enhanced visibility for cinematic motion */}
         <video
           src="/branding/FluxaX animation red.mp4"
           autoPlay
           muted
           loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-35"
+          className="absolute inset-0 w-full h-full object-cover opacity-65"
         />
 
         {/* Ambient Dark Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/90 pointer-events-none" />
-        <div className="absolute inset-0 bg-radial from-transparent via-slate-950/40 to-slate-950 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-slate-950/75 pointer-events-none" />
+        <div className="absolute inset-0 bg-radial from-transparent via-slate-950/30 to-slate-950 pointer-events-none" />
 
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-900/40 border border-teal-500/30 text-teal-300 text-xs font-semibold backdrop-blur-md">

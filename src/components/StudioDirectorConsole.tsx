@@ -64,6 +64,38 @@ export default function StudioDirectorConsole({
   const [masterVuR, setMasterVuR] = useState<number>(0);
   const [masterDbL, setMasterDbL] = useState<string>("-inf dB");
   const [masterDbR, setMasterDbR] = useState<string>("-inf dB");
+  const rawVuLRef = useRef<number>(0);
+  const rawVuRRef = useRef<number>(0);
+  const volClientRef = useRef<number>(90);
+
+  const applyVuLevels = (rawL: number, rawR: number, currentVol: number) => {
+    rawVuLRef.current = rawL;
+    rawVuRRef.current = rawR;
+    if (currentVol <= 0) {
+      setMasterVuL(0);
+      setMasterVuR(0);
+      setMasterDbL("-inf dB");
+      setMasterDbR("-inf dB");
+      return;
+    }
+    const mult = Math.pow(currentVol / 100, 1.8);
+    const finalL = Math.min(100, Math.max(0, Math.round(rawL * mult)));
+    const finalR = Math.min(100, Math.max(0, Math.round(rawR * mult)));
+    setMasterVuL(finalL);
+    setMasterVuR(finalR);
+    if (finalL <= 0) {
+      setMasterDbL("-inf dB");
+    } else {
+      const db = -60 + (finalL / 100) * 60;
+      setMasterDbL(`${db.toFixed(1)} dB`);
+    }
+    if (finalR <= 0) {
+      setMasterDbR("-inf dB");
+    } else {
+      const db = -60 + (finalR / 100) * 60;
+      setMasterDbR(`${db.toFixed(1)} dB`);
+    }
+  };
 
   // Talkback Tonca ON / OFF Toggle
   const [talkbackOn, setTalkbackOn] = useState<boolean>(false);
@@ -90,6 +122,63 @@ export default function StudioDirectorConsole({
   // Multi-Client Attendees & Project Files
   const [attendees, setAttendees] = useState<SessionAttendee[]>(session.attendees || []);
   const [projectFiles, setProjectFiles] = useState<ProjectFileItem[]>(session.projectFiles || []);
+  const [exchangeFolder, setExchangeFolder] = useState<string>("D:\\AudioProjects\\Intesa2026");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("fluxax_exchange_folder");
+      if (saved) setExchangeFolder(saved);
+    }
+  }, []);
+
+  const handlePickExchangeFolder = async () => {
+    try {
+      if ("showDirectoryPicker" in window) {
+        const dirHandle = await (window as any).showDirectoryPicker();
+        if (dirHandle && dirHandle.name) {
+          const folderName = "D:\\AudioProjects\\" + dirHandle.name;
+          setExchangeFolder(folderName);
+          localStorage.setItem("fluxax_exchange_folder", folderName);
+          return;
+        }
+      }
+    } catch (_) {}
+    const manual = window.prompt("Unesite ili potvrdite lokalnu putanju foldera za razmjenu materijala:", exchangeFolder);
+    if (manual && manual.trim()) {
+      setExchangeFolder(manual.trim());
+      localStorage.setItem("fluxax_exchange_folder", manual.trim());
+    }
+  };
+
+  const handleRealUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+      }
+      formData.append("uploadedBy", "Studio TAF (Režija)");
+      formData.append("sessionId", session.id || "taf-coca-cola-2026");
+
+      const res = await fetch("/api/studio/upload-file", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.files)) {
+        setProjectFiles((prev) => [...data.files, ...prev]);
+      }
+    } catch (err) {
+      console.error("Upload failed", err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   // Screen / Video Share Stream
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
@@ -145,14 +234,9 @@ export default function StudioDirectorConsole({
           if (msg.type === "METERS_TICK") {
             const out7 = msg.outputs?.find((o: any) => o.id === 7 || o.id === 1);
             const out8 = msg.outputs?.find((o: any) => o.id === 8 || o.id === 2);
-            if (out7) {
-              setMasterVuL(out7.level);
-              setMasterDbL(out7.db <= -59.5 ? "-inf dB" : `${out7.db.toFixed(1)} dB`);
-            }
-            if (out8) {
-              setMasterVuR(out8.level);
-              setMasterDbR(out8.db <= -59.5 ? "-inf dB" : `${out8.db.toFixed(1)} dB`);
-            }
+            const rawL = out7 && typeof out7.level === "number" ? out7.level : 0;
+            const rawR = out8 && typeof out8.level === "number" ? out8.level : 0;
+            applyVuLevels(rawL, rawR, volClientRef.current);
           }
           if (msg.type === "TALKBACK_STATE") {
             if (typeof msg.muted === "boolean") {
@@ -182,6 +266,18 @@ export default function StudioDirectorConsole({
           if (data.activeSession.attendees) setAttendees(data.activeSession.attendees);
           if (data.activeSession.projectFiles) setProjectFiles(data.activeSession.projectFiles);
           if (data.activeSession.segments) setSegments(data.activeSession.segments);
+        }
+        if (typeof data.isOnline === "boolean") {
+          // If direct WS is not connected, use API status and relayed hardware meters
+          if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setIsBridgeOnline(data.isOnline);
+            if (data.meters) {
+              setMasterVuL(data.meters.masterVuL ?? 0);
+              setMasterVuR(data.meters.masterVuR ?? 0);
+              setMasterDbL(data.meters.masterDbL ?? "-inf dB");
+              setMasterDbR(data.meters.masterDbR ?? "-inf dB");
+            }
+          }
         }
       } catch (_) {}
     };
@@ -401,6 +497,8 @@ export default function StudioDirectorConsole({
 
   const handleVolClientChange = (val: number) => {
     setVolClient(val);
+    volClientRef.current = val;
+    applyVuLevels(rawVuLRef.current, rawVuRRef.current, val);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "UPDATE_CHANNEL", channelType: "output", id: 1, level: val }));
     }
@@ -413,21 +511,21 @@ export default function StudioDirectorConsole({
       {/* =========================================================================
           TOP MASTER CONTROL BAR (Light Studio Header)
       ========================================================================= */}
-      <header className="bg-white/95 border-b border-teal-200/80 px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 shadow-sm backdrop-blur-md">
+      <header className="bg-slate-950 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 shadow-xl backdrop-blur-md text-white">
         <div className="flex items-center gap-3">
-          <h2 className="text-base font-black text-slate-900 leading-tight">
+          <h2 className="text-base font-black text-white leading-tight tracking-tight">
             {session.projectName}
           </h2>
         </div>
 
-        {/* Action Controls in Topbar */}
+        {/* Action Controls in Topbar (Dark Gray Professional Studio Theme) */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Session Billing Timer Badge */}
           <div
             title="Aktivno vrijeme zakupa termina i snimanja"
-            className="px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-teal-900 font-mono text-xs font-bold flex items-center gap-1.5 shadow-sm"
+            className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700/80 text-emerald-400 font-mono text-xs font-bold flex items-center gap-1.5 shadow-sm"
           >
-            <Timer className="w-3.5 h-3.5 text-teal-600 animate-spin" style={{ animationDuration: "6s" }} />
+            <Timer className="w-3.5 h-3.5 text-emerald-400 animate-spin" style={{ animationDuration: "6s" }} />
             <span>{formatBillingDuration(sessionBillingElapsed)}</span>
           </div>
 
@@ -436,23 +534,23 @@ export default function StudioDirectorConsole({
             title="Veza sa lokalnim StudioBridge hardverom (port :4040)"
             className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all shadow-sm ${
               isBridgeOnline
-                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                : "bg-slate-100 text-slate-600 border-slate-300"
+                ? "bg-emerald-950/60 text-emerald-300 border-emerald-600/60"
+                : "bg-slate-900 text-slate-400 border-slate-800"
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${isBridgeOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+            <span className={`w-2 h-2 rounded-full ${isBridgeOnline ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
             <span>{isBridgeOnline ? "HARDWARE ONLINE" : "OFFLINE"}</span>
           </div>
 
           {/* IZBOR REŽIMA SNIMANJA: SAMO GLAS vs SA VIDEO PODLOGOM */}
-          <div className="bg-slate-100 p-1 rounded-xl border border-slate-300 flex items-center gap-1 shadow-inner">
+          <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 flex items-center gap-1 shadow-inner">
             <button
               type="button"
               onClick={() => handleToggleFocusMode("audio")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 focusMode === "audio"
                   ? "bg-teal-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-400 hover:text-white"
               }`}
               title="Snimanje samo glasa (Voiceover / Radio / Audio knjiga bez videa)"
             >
@@ -465,7 +563,7 @@ export default function StudioDirectorConsole({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 focusMode === "video"
                   ? "bg-purple-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-400 hover:text-white"
               }`}
               title="Snimanje sa video podlogom (Sinkronizacija na sliku / TV spot / Video preview)"
             >
@@ -479,8 +577,8 @@ export default function StudioDirectorConsole({
             onClick={handleToggleOnAir}
             className={`px-4 py-2 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-md ${
               isOnAir
-                ? "bg-red-600 hover:bg-red-500 text-white border border-red-400 animate-pulse shadow-red-500/30"
-                : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-300"
+                ? "bg-red-600 hover:bg-red-500 text-white border border-red-500 animate-pulse shadow-lg shadow-red-600/40"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80"
             }`}
           >
             <span className={`w-2.5 h-2.5 rounded-full ${isOnAir ? "bg-white" : "bg-red-500"}`} />
@@ -492,11 +590,11 @@ export default function StudioDirectorConsole({
             onClick={handleToggleDoor}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border shadow-sm ${
               isDoorOpen
-                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+                ? "bg-emerald-950/60 text-emerald-300 border-emerald-600/60 hover:bg-emerald-900/60"
+                : "bg-amber-950/60 text-amber-300 border-amber-600/60 hover:bg-amber-900/60"
             }`}
           >
-            {isDoorOpen ? <DoorOpen className="w-4 h-4 text-emerald-600" /> : <DoorClosed className="w-4 h-4 text-amber-600" />}
+            {isDoorOpen ? <DoorOpen className="w-4 h-4 text-emerald-400" /> : <DoorClosed className="w-4 h-4 text-amber-400" />}
             <span>{isDoorOpen ? "VRATA OTVORENA" : "PRED VRATIMA"}</span>
           </button>
 
@@ -504,9 +602,9 @@ export default function StudioDirectorConsole({
           <button
             onClick={() => setShowPreFlightModal(true)}
             title="Pre-flight hardverski test i kalibracija studija prije snimanja"
-            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-300"
+            className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-700/80"
           >
-            <Wrench className="w-3.5 h-3.5 text-teal-600" />
+            <Wrench className="w-3.5 h-3.5 text-teal-400" />
             <span className="hidden sm:inline">Setup Studija</span>
           </button>
 
@@ -514,9 +612,9 @@ export default function StudioDirectorConsole({
           <button
             onClick={() => setShowInviteModal(true)}
             title="Generiši i kopiraj pozivne linkove za naručioca i klijente"
-            className="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-teal-300 shadow-2xs"
+            className="px-3 py-2 rounded-xl bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-teal-600/60 shadow-2xs"
           >
-            <Link2 className="w-3.5 h-3.5 text-teal-600" />
+            <Link2 className="w-3.5 h-3.5 text-teal-400" />
             <span>Pozivnice</span>
           </button>
 
@@ -524,7 +622,7 @@ export default function StudioDirectorConsole({
           <button
             onClick={() => setShowExitConfirm(true)}
             title="Napusti studio i vrati se u kalendar termina"
-            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-300"
+            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-red-950/60 text-slate-300 hover:text-red-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-700/80"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Napusti Studio</span>
@@ -909,24 +1007,49 @@ export default function StudioDirectorConsole({
             ROW 3: PROJECT SHARE / AUDIO TREZOR (INSTANT MASTER DOWNLOADS & UPLOAD)
         ========================================================================= */}
         <div className="bg-white border border-teal-200/80 rounded-2xl p-5 shadow-sm">
+          <input
+            type="file"
+            ref={fileInputRef}
+            multiple
+            className="hidden"
+            onChange={handleRealUpload}
+          />
+
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-teal-100 mb-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
               <Share2 className="w-4 h-4 text-teal-600" />
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Project Share / Audio Trezor (Eksportovani Materijali)
+                Project Share / Audio Trezor (Dvosmjerna Razmjena Fajlova)
               </h4>
               <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 font-bold">
                 Bez WeTransfer-a
               </span>
             </div>
 
-            <button
-              onClick={handleSimulateExportTake}
-              className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-sm"
-            >
-              <UploadCloud className="w-3.5 h-3.5 text-teal-600" />
-              <span>Dodaj Novi Master Export</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Lokalni folder za razmjenu */}
+              <button
+                type="button"
+                onClick={handlePickExchangeFolder}
+                title="Podesi ili izaberi lokalni folder za automatsku razmjenu materijala"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-semibold cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              >
+                <span>📁</span>
+                <span className="font-mono text-[11px] truncate max-w-[200px]">{exchangeFolder}</span>
+                <span className="text-[10px] text-teal-700 font-bold underline ml-1">Promijeni</span>
+              </button>
+
+              {/* Upload dugme */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-sm transition-all"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>{isUploading ? "Šaljem fajl..." : "Pošalji Master / Export"}</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -946,19 +1069,28 @@ export default function StudioDirectorConsole({
                     )}
                   </div>
                   <div className="overflow-hidden">
-                    <h5 className="text-xs font-bold text-slate-900 truncate" title={file.name}>
-                      {file.name}
-                    </h5>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {file.size} • {file.uploadedAt}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <h5 className="text-xs font-bold text-slate-900 truncate" title={file.name}>
+                        {file.name}
+                      </h5>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono">
+                      <span>{file.size} • {file.uploadedAt}</span>
+                      <span className={`px-1.5 py-0.2 rounded font-bold text-[9px] ${
+                        (file.uploadedBy || "").includes("Naručilac")
+                          ? "bg-blue-100 text-blue-800 border border-blue-200"
+                          : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      }`}>
+                        {file.uploadedBy || "Studio TAF"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <a
                   href={file.url}
-                  download
-                  title="Preuzmi fajl direktno"
+                  download={file.name}
+                  title="Preuzmi fajl direktno u lokalni folder"
                   className="p-2 rounded-lg bg-white hover:bg-teal-600 text-slate-700 hover:text-white border border-slate-200 transition-all cursor-pointer shadow-sm ml-2"
                 >
                   <Download className="w-3.5 h-3.5" />

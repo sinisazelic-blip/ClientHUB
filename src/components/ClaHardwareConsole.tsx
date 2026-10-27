@@ -116,15 +116,37 @@ export function ClaHardwareConsole({
       setRawStreamR(0);
     }
 
+    let pollInterval: NodeJS.Timeout | null = null;
+    const fetchApiMeters = async () => {
+      try {
+        const res = await fetch("/api/studio/status");
+        const data = await res.json();
+        if (data.isOnline && data.meters) {
+          setRawStreamL(data.meters.masterVuL ?? 0);
+          setRawStreamR(data.meters.masterVuR ?? 0);
+        } else if (!data.isOnline) {
+          setRawStreamL(0);
+          setRawStreamR(0);
+        }
+      } catch (_) {}
+    };
+
+    pollInterval = setInterval(() => {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        fetchApiMeters();
+      }
+    }, 1000);
+
     return () => {
       if (ws) ws.close();
+      if (pollInterval) clearInterval(pollInterval);
       wsRef.current = null;
     };
   }, []);
 
   // Compute actual attenuated/ducked VU levels from REAL incoming sound
   useEffect(() => {
-    if (isMuted) {
+    if (isMuted || phonesVol <= 0) {
       setStreamMeterL(0);
       setStreamMeterR(0);
       return;
@@ -139,9 +161,11 @@ export function ClaHardwareConsole({
       return;
     }
 
-    const volMultiplier = Math.pow(10, phonesVol / 20);
+    // phonesVol in percentage: 0 to 100%
+    // At 0: total silence. At 80%: 0 dB unity gain. Above 80%: boost.
+    const volMultiplier = phonesVol <= 0 ? 0 : Math.pow(phonesVol / 80, 1.8);
     const duckFactor = isTalkbackActive && autoDuck ? 0.35 : 1.0;
-    const dimFactor = isDimmed ? 0.20 : 1.0; // -20 dB
+    const dimFactor = isDimmed ? 0.10 : 1.0; // -20 dB
 
     const finalL = Math.min(100, Math.max(0, Math.round(baseL * volMultiplier * duckFactor * dimFactor)));
     const finalR = Math.min(100, Math.max(0, Math.round(baseR * volMultiplier * duckFactor * dimFactor)));
@@ -163,7 +187,7 @@ export function ClaHardwareConsole({
   };
 
   const handlePhonesVol = (val: number) => {
-    const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));
+    const clamped = Math.max(0, Math.min(100, Math.round(val)));
     setInternalPhonesVol(clamped);
     if (onPhonesVolumeChange) onPhonesVolumeChange(clamped);
   };
@@ -446,13 +470,15 @@ export function ClaHardwareConsole({
                 <AnalogLedMeter level={streamMeterL} label="L" />
                 <AnalogLedMeter level={streamMeterR} label="R" />
               </div>
-              <AnalogFaderTrack value={phonesVol} onChange={handlePhonesVol} />
+              <AnalogFaderTrack value={phonesVol} onChange={handlePhonesVol} isPhones />
             </div>
 
             {/* Phones dB Readout */}
             <div className="mt-2 text-center">
               <span className="text-[10px] font-mono text-emerald-300 font-bold">
-                {phonesVol > 0 ? `+${phonesVol}` : phonesVol} dB
+                {phonesVol <= 0 || isMuted
+                  ? "-∞ dB (TIŠINA)"
+                  : `${phonesVol >= 80 ? "+" : ""}${Math.round(20 * Math.log10(Math.max(0.01, phonesVol / 80)))} dB (${phonesVol}%)`}
               </span>
             </div>
 
@@ -494,15 +520,20 @@ export function ClaHardwareConsole({
 function AnalogFaderTrack({
   value,
   onChange,
+  isPhones = false,
 }: {
   value: number;
   onChange: (val: number) => void;
+  isPhones?: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Convert dB (-10 to +10) to percentage (0% to 100%)
-  const pct = Math.max(0, Math.min(100, ((value + 10) / 20) * 100));
+  // If isPhones: value is 0% to 100%
+  // If micGain: value is -10 to +10 dB
+  const pct = isPhones
+    ? Math.max(0, Math.min(100, value))
+    : Math.max(0, Math.min(100, ((value + 10) / 20) * 100));
 
   const updateFromPointer = (clientY: number) => {
     if (!trackRef.current) return;
@@ -510,9 +541,14 @@ function AnalogFaderTrack({
     const height = rect.height;
     const relativeY = clientY - rect.top;
     const clampedY = Math.max(0, Math.min(height, relativeY));
-    const invertedPct = ((height - clampedY) / height) * 100;
-    const db = (invertedPct / 100) * 20 - 10;
-    onChange(db);
+    const invertedPct = Math.round(((height - clampedY) / height) * 100);
+    if (isPhones) {
+      // Snap to 0 if dragged near the bottom (within 4%)
+      onChange(invertedPct < 4 ? 0 : invertedPct);
+    } else {
+      const db = (invertedPct / 100) * 20 - 10;
+      onChange(Math.round(db * 10) / 10);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -540,16 +576,16 @@ function AnalogFaderTrack({
     <div className="relative flex items-center justify-center select-none">
       {/* Scale on Left */}
       <div className="flex flex-col justify-between h-44 sm:h-48 text-[7px] font-mono text-[#525e70] pr-1.5 select-none pointer-events-none">
-        <span>+10</span>
+        <span>{isPhones ? "+6" : "+10"}</span>
         <span>0</span>
-        <span>-10</span>
+        <span>{isPhones ? "-∞" : "-10"}</span>
       </div>
 
       {/* Vertical Milled Slot */}
       <div
         ref={trackRef}
         onMouseDown={handleMouseDown}
-        onDoubleClick={() => onChange(0)} // Reset to 0 dB
+        onDoubleClick={() => onChange(isPhones ? 80 : 0)} // Reset to Unity
         className="relative w-3.5 h-44 sm:h-48 rounded-full bg-[#07080a] border border-[#232832] cursor-pointer shadow-[inset_0_3px_8px_rgba(0,0,0,0.95)] flex justify-center"
       >
         <div className="absolute top-2 bottom-2 w-0.5 bg-[#171a20]" />
@@ -572,9 +608,9 @@ function AnalogFaderTrack({
 
       {/* Scale on Right */}
       <div className="flex flex-col justify-between h-44 sm:h-48 text-[7px] font-mono text-[#525e70] pl-1.5 select-none pointer-events-none">
-        <span>+10</span>
+        <span>{isPhones ? "+6" : "+10"}</span>
         <span>0</span>
-        <span>-10</span>
+        <span>{isPhones ? "-∞" : "-10"}</span>
       </div>
     </div>
   );

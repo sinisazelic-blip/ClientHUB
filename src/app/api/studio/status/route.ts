@@ -21,6 +21,7 @@ export interface ProjectFileItem {
   type: "audio" | "video" | "doc";
   uploadedAt: string;
   url: string;
+  uploadedBy?: string;
 }
 
 export interface SessionAttendee {
@@ -66,6 +67,12 @@ let bridgeStatus = {
   language: "bs",
   lastSeen: Date.now(),
   ip: "127.0.0.1",
+  meters: {
+    masterVuL: 0,
+    masterVuR: 0,
+    masterDbL: "-inf dB",
+    masterDbR: "-inf dB",
+  },
 };
 
 // Independent talkback state tracking per role
@@ -186,14 +193,16 @@ let activeSessionId = "taf-coca-cola-2026";
 
 export async function GET() {
   const isStale = Date.now() - bridgeStatus.lastSeen > 30000;
+  const isOnline = bridgeStatus.isOnline && !isStale;
   const activeSession = sessionsList.find((s) => s.id === activeSessionId) || sessionsList[0];
 
   return NextResponse.json({
     success: true,
-    isOnline: bridgeStatus.isOnline && !isStale,
+    isOnline,
     studioName: bridgeStatus.studioName,
     language: bridgeStatus.language,
     lastSeen: bridgeStatus.lastSeen,
+    meters: isOnline ? bridgeStatus.meters : { masterVuL: 0, masterVuR: 0, masterDbL: "-inf dB", masterDbR: "-inf dB" },
     activeSessionId,
     activeSession,
     sessions: sessionsList,
@@ -234,6 +243,7 @@ export async function POST(req: Request) {
         directorPin: typeof body.directorPin === "string" && body.directorPin.trim() ? body.directorPin.trim() : bridgeStatus.directorPin,
         lastSeen: Date.now(),
         ip: req.headers.get("x-forwarded-for") || "127.0.0.1",
+        meters: body.meters || bridgeStatus.meters,
       };
       return NextResponse.json({ success: true, acknowledged: true, bridgeStatus });
     }
@@ -332,6 +342,7 @@ export async function POST(req: Request) {
           type: body.file.type || "audio",
           uploadedAt: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
           url: body.file.url || "#",
+          uploadedBy: body.file.uploadedBy || "Studio",
         };
         s.projectFiles.unshift(newFile);
         return NextResponse.json({ success: true, file: newFile, projectFiles: s.projectFiles });
