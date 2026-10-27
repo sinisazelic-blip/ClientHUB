@@ -275,7 +275,6 @@ export default function StudioDirectorConsole({
             const rawL = out7 && typeof out7.level === "number" ? out7.level : 0;
             const rawR = out8 && typeof out8.level === "number" ? out8.level : 0;
             realtimeAudioMeter.feedLevels(rawL, rawR);
-            applyVuLevels(rawL, rawR, volClientRef.current);
           }
           if (msg.type === "TALKBACK_STATE") {
             if (typeof msg.muted === "boolean") {
@@ -314,7 +313,6 @@ export default function StudioDirectorConsole({
               const mL = data.meters.masterVuL ?? 0;
               const mR = data.meters.masterVuR ?? 0;
               realtimeAudioMeter.feedLevels(mL, mR);
-              applyVuLevels(mL, mR, volClientRef.current);
             }
           }
         }

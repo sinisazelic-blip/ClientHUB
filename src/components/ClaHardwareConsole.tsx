@@ -115,8 +115,11 @@ export function ClaHardwareConsole({
           if (msg.type === "METERS_TICK" && Array.isArray(msg.outputs)) {
             const outL = msg.outputs.find((o: any) => o.id === 1 || o.id === 7);
             const outR = msg.outputs.find((o: any) => o.id === 2 || o.id === 8);
-            setRawStreamL(outL && typeof outL.level === "number" ? outL.level : 0);
-            setRawStreamR(outR && typeof outR.level === "number" ? outR.level : 0);
+            const rawL = outL && typeof outL.level === "number" ? outL.level : 0;
+            const rawR = outR && typeof outR.level === "number" ? outR.level : 0;
+            setRawStreamL(rawL);
+            setRawStreamR(rawR);
+            realtimeAudioMeter.feedLevels(rawL, rawR);
           }
         } catch (_) {}
       };
@@ -134,12 +137,101 @@ export function ClaHardwareConsole({
       setRawStreamR(0);
     }
 
+    // Secondary fallback polling to ensure meters are always active even if local WS is disconnected
+    const pollTimer = setInterval(async () => {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        try {
+          const res = await fetch("/api/studio/status");
+          const data = await res.json();
+          if (data && data.meters) {
+            const mL = data.meters.masterVuL ?? 0;
+            const mR = data.meters.masterVuR ?? 0;
+            setRawStreamL(mL);
+            setRawStreamR(mR);
+            realtimeAudioMeter.feedLevels(mL, mR);
+          }
+        } catch (_) {}
+      }
+    }, 500);
+
     return () => {
       unsubscribe();
+      clearInterval(pollTimer);
       if (ws) ws.close();
       wsRef.current = null;
     };
   }, [phonesVol, isMuted, isDimmed, monitorMode]);
+
+  // Live Microphone Metering for Client / Naručilac Talkback
+  useEffect(() => {
+    let animId: number | null = null;
+    let micStream: MediaStream | null = null;
+    let audioCtx: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+
+    if (isTalkbackActive) {
+      if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ audio: true, video: false })
+          .then((stream) => {
+            micStream = stream;
+            micStreamRef.current = stream;
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            audioCtx = new AudioContextClass();
+            audioCtxRef.current = audioCtx;
+            const source = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.5;
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            let smoothedMic = 0;
+
+            const checkMic = () => {
+              if (!analyser) return;
+              analyser.getByteFrequencyData(dataArray);
+              let sum = 0;
+              for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+              }
+              const avg = sum / dataArray.length;
+              // Apply micGain (micGain is -10 to +10 dB)
+              const gainMultiplier = Math.pow(10, (micGain || 0) / 20);
+              const target = Math.min(100, Math.round((avg / 128) * 100 * gainMultiplier));
+
+              if (target > smoothedMic) {
+                smoothedMic += (target - smoothedMic) * 0.4;
+              } else {
+                smoothedMic += (target - smoothedMic) * 0.1;
+              }
+              setMicMeterLevel(Math.round(smoothedMic));
+              animId = requestAnimationFrame(checkMic);
+            };
+            animId = requestAnimationFrame(checkMic);
+          })
+          .catch(() => {
+            setMicMeterLevel(0);
+          });
+      }
+    } else {
+      setMicMeterLevel(0);
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((t) => t.stop());
+        micStreamRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+    }
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      if (micStream) micStream.getTracks().forEach((t) => t.stop());
+      if (audioCtx && audioCtx.state !== "closed") audioCtx.close().catch(() => {});
+    };
+  }, [isTalkbackActive, micGain]);
 
   const handleMicGain = (val: number) => {
     const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));

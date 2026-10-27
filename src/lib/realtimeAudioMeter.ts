@@ -39,6 +39,11 @@ class RealtimeAudioMeterEngine {
   private smoothedVuL = 0;
   private smoothedVuR = 0;
 
+  // Steady numeric display hold (~200ms refresh rate) so dB text doesn't strobe/flicker
+  private lastDbUpdateTime = 0;
+  private currentDisplayDbL = "-inf dB";
+  private currentDisplayDbR = "-inf dB";
+
   // Buffer for WebSocket PCM streaming
   private pcmPeakL = 0;
   private pcmPeakR = 0;
@@ -325,14 +330,21 @@ class RealtimeAudioMeterEngine {
       const finalVuL = Math.round(this.smoothedVuL);
       const finalVuR = Math.round(this.smoothedVuR);
 
-      const dbStrL = finalVuL <= 0 || dbL <= -59.5 ? "-inf dB" : `${Math.min(0, dbL).toFixed(1)} dB`;
-      const dbStrR = finalVuR <= 0 || dbR <= -59.5 ? "-inf dB" : `${Math.min(0, dbR).toFixed(1)} dB`;
+      // Steady display rate for textual numbers: update at ~5 Hz (200ms) with peak hold so eyes can read it without strobing
+      if (now - this.lastDbUpdateTime >= 200) {
+        this.lastDbUpdateTime = now;
+        this.currentDisplayDbL = finalVuL <= 0 || dbL <= -59.5 ? "-inf dB" : `${Math.min(0, dbL).toFixed(1)} dB`;
+        this.currentDisplayDbR = finalVuR <= 0 || dbR <= -59.5 ? "-inf dB" : `${Math.min(0, dbR).toFixed(1)} dB`;
+      } else if (finalVuL <= 0) {
+        this.currentDisplayDbL = "-inf dB";
+        this.currentDisplayDbR = "-inf dB";
+      }
 
       const reading: MeterReading = {
         vuL: finalVuL,
         vuR: finalVuR,
-        dbL: dbStrL,
-        dbR: dbStrR,
+        dbL: this.currentDisplayDbL,
+        dbR: this.currentDisplayDbR,
         rawPeakL: monoTargetL,
         rawPeakR: monoTargetR,
       };
