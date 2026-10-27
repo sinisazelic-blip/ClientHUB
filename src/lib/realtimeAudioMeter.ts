@@ -194,6 +194,22 @@ class RealtimeAudioMeterEngine {
     this.startMeterLoop();
   }
 
+  /**
+   * Feed level percentages (0-100) from StudioBridge METERS_TICK or polling
+   */
+  public feedLevels(levelL: number, levelR: number) {
+    if (levelL <= 0 && levelR <= 0) return;
+    const ampL = Math.max(0, Math.min(1.0, levelL / 100));
+    const ampR = Math.max(0, Math.min(1.0, levelR / 100));
+    this.pcmPeakL = Math.max(ampL, this.pcmPeakL * 0.88);
+    this.pcmPeakR = Math.max(ampR, this.pcmPeakR * 0.88);
+    this.pcmRmsL = Math.max(ampL * 0.7, this.pcmRmsL * 0.88);
+    this.pcmRmsR = Math.max(ampR * 0.7, this.pcmRmsR * 0.88);
+    this.hasPcmSignal = true;
+    this.lastPcmTime = performance.now();
+    this.startMeterLoop();
+  }
+
   public subscribe(cb: MeterCallback): () => void {
     this.callbacks.add(cb);
     this.startMeterLoop();
