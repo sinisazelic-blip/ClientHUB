@@ -710,13 +710,13 @@ export default function StudioDirectorConsole({
               </div>
             </div>
 
-            {/* Stereo VU Bars (Instant 60 FPS needle response) */}
+            {/* Stereo VU Bars (Smooth 60 FPS analog ballistics) */}
             <div className="space-y-2.5 my-2">
               <div className="flex items-center gap-2">
                 <span className="w-3 font-mono text-xs font-bold text-slate-500">L</span>
                 <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-none"
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-[width] duration-75 ease-out"
                     style={{ width: `${masterVuL}%` }}
                   />
                 </div>
@@ -727,7 +727,7 @@ export default function StudioDirectorConsole({
                 <span className="w-3 font-mono text-xs font-bold text-slate-500">R</span>
                 <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-none"
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-[width] duration-75 ease-out"
                     style={{ width: `${masterVuR}%` }}
                   />
                 </div>

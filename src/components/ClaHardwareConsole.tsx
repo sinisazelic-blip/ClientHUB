@@ -141,42 +141,6 @@ export function ClaHardwareConsole({
     };
   }, [phonesVol, isMuted, isDimmed, monitorMode]);
 
-  // Compute actual attenuated/ducked VU levels from REAL incoming sound
-  useEffect(() => {
-    if (isMuted || phonesVol <= 0) {
-      setStreamMeterL(0);
-      setStreamMeterR(0);
-      return;
-    }
-
-    const baseL = externalStreamMeterL !== undefined ? externalStreamMeterL : rawStreamL;
-    const baseR = externalStreamMeterR !== undefined ? externalStreamMeterR : rawStreamR;
-
-    if (baseL <= 0 && baseR <= 0) {
-      setStreamMeterL(0);
-      setStreamMeterR(0);
-      return;
-    }
-
-    // phonesVol in percentage: 0 to 100%
-    // At 0: total silence. At 80%: 0 dB unity gain. Above 80%: boost.
-    const volMultiplier = phonesVol <= 0 ? 0 : Math.pow(phonesVol / 80, 1.8);
-    const duckFactor = isTalkbackActive && autoDuck ? 0.35 : 1.0;
-    const dimFactor = isDimmed ? 0.10 : 1.0; // -20 dB
-
-    const finalL = Math.min(100, Math.max(0, Math.round(baseL * volMultiplier * duckFactor * dimFactor)));
-    const finalR = Math.min(100, Math.max(0, Math.round(baseR * volMultiplier * duckFactor * dimFactor)));
-
-    if (monitorMode === "mono") {
-      const monoAvg = Math.round((finalL + finalR) / 2);
-      setStreamMeterL(monoAvg);
-      setStreamMeterR(monoAvg);
-    } else {
-      setStreamMeterL(finalL);
-      setStreamMeterR(finalR);
-    }
-  }, [rawStreamL, rawStreamR, externalStreamMeterL, externalStreamMeterR, isMuted, isTalkbackActive, autoDuck, isDimmed, phonesVol, monitorMode]);
-
   const handleMicGain = (val: number) => {
     const clamped = Math.max(-10, Math.min(10, Math.round(val * 10) / 10));
     setInternalMicGain(clamped);

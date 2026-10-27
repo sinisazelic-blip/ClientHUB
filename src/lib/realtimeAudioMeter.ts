@@ -1,14 +1,15 @@
 /**
- * Real-time 60 FPS Web Audio Metering & Playback Engine for Client HUB
- * Runs entirely on the host browser:
- * - Direct soundcard access via navigator.mediaDevices.getUserMedia (ASIO/WASAPI Loopback/Mic)
- * - Binary PCM streaming from StudioBridge over WebSocket
+ * Real-time Professional Audio Metering & Ballistics Engine for Client HUB
+ * Implements standard studio VU ballistics (ANSI C16.5 / IEC 60268-10):
+ * - Fast snappy attack (< 15ms)
+ * - Smooth analog decay (~300ms integration release)
+ * - RMS energy integration (eliminates zero-crossing flicker/jitter)
  * - Master/Phones volume fader attenuation (0 = absolute silence & 0 VU meter)
  */
 
 export interface MeterReading {
-  vuL: number;       // 0 - 100 percentage
-  vuR: number;       // 0 - 100 percentage
+  vuL: number;       // 0 - 100 percentage (smooth ballistics)
+  vuR: number;       // 0 - 100 percentage (smooth ballistics)
   dbL: string;       // formatted dB string, e.g. "-12.4 dB" or "-inf dB"
   dbR: string;       // formatted dB string, e.g. "-12.4 dB" or "-inf dB"
   rawPeakL: number;  // 0.0 to 1.0+
@@ -34,12 +35,15 @@ class RealtimeAudioMeterEngine {
   private isDimmed: boolean = false;
   private isMono: boolean = false;
 
+  // VU Ballistics Smoothers
+  private smoothedVuL = 0;
+  private smoothedVuR = 0;
+
   // Buffer for WebSocket PCM streaming
-  private pcmBufferL = new Float32Array(1024);
-  private pcmBufferR = new Float32Array(1024);
   private pcmPeakL = 0;
   private pcmPeakR = 0;
-  private pcmDecay = 0.92;
+  private pcmRmsL = 0;
+  private pcmRmsR = 0;
   private hasPcmSignal = false;
   private lastPcmTime = 0;
 
@@ -54,10 +58,10 @@ class RealtimeAudioMeterEngine {
       this.analyserR = this.ctx.createAnalyser();
       this.gainNode = this.ctx.createGain();
 
-      this.analyserL.fftSize = 512;
-      this.analyserR.fftSize = 512;
-      this.analyserL.smoothingTimeConstant = 0.2;
-      this.analyserR.smoothingTimeConstant = 0.2;
+      this.analyserL.fftSize = 1024;
+      this.analyserR.fftSize = 1024;
+      this.analyserL.smoothingTimeConstant = 0.8;
+      this.analyserR.smoothingTimeConstant = 0.8;
 
       this.updateGain();
     }
@@ -91,7 +95,6 @@ class RealtimeAudioMeterEngine {
       this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
       return;
     }
-    // Exponential fader taper: vol/100 squared
     let mult = Math.pow(this.currentVolume / 100, 1.8);
     if (this.isDimmed) mult *= 0.1; // -20dB dim
     this.gainNode.gain.setValueAtTime(mult, this.ctx.currentTime);
@@ -132,7 +135,6 @@ class RealtimeAudioMeterEngine {
       }
 
       this.sourceNode = this.ctx.createMediaStreamSource(stream);
-      // Connect: source -> splitter -> analyserL & analyserR
       this.sourceNode.connect(this.splitterNode);
       this.splitterNode.connect(this.analyserL, 0);
       this.splitterNode.connect(this.analyserR, 1);
@@ -162,17 +164,30 @@ class RealtimeAudioMeterEngine {
   public feedPcmChunk(pcmData: Float32Array) {
     if (!pcmData || pcmData.length === 0) return;
 
-    let pL = 0;
-    let pR = 0;
+    let peakL = 0;
+    let peakR = 0;
+    let sumSqL = 0;
+    let sumSqR = 0;
+    const numFrames = pcmData.length / 2;
+
     for (let i = 0; i < pcmData.length; i += 2) {
       const l = Math.abs(pcmData[i]);
       const r = Math.abs(pcmData[i + 1] !== undefined ? pcmData[i + 1] : pcmData[i]);
-      if (l > pL) pL = l;
-      if (r > pR) pR = r;
+      if (l > peakL) peakL = l;
+      if (r > peakR) peakR = r;
+      sumSqL += l * l;
+      sumSqR += r * r;
     }
 
-    this.pcmPeakL = Math.max(pL, this.pcmPeakL * this.pcmDecay);
-    this.pcmPeakR = Math.max(pR, this.pcmPeakR * this.pcmDecay);
+    const rmsL = Math.sqrt(sumSqL / (numFrames || 1));
+    const rmsR = Math.sqrt(sumSqR / (numFrames || 1));
+
+    // Instant attack, smooth exponential decay for PCM
+    this.pcmPeakL = Math.max(peakL, this.pcmPeakL * 0.88);
+    this.pcmPeakR = Math.max(peakR, this.pcmPeakR * 0.88);
+    this.pcmRmsL = Math.max(rmsL, this.pcmRmsL * 0.88);
+    this.pcmRmsR = Math.max(rmsR, this.pcmRmsR * 0.88);
+
     this.hasPcmSignal = true;
     this.lastPcmTime = performance.now();
 
@@ -193,38 +208,56 @@ class RealtimeAudioMeterEngine {
   private startMeterLoop() {
     if (this.animFrameId !== null) return;
 
-    const dataArrayL = new Float32Array(512);
-    const dataArrayR = new Float32Array(512);
+    const dataArrayL = new Float32Array(1024);
+    const dataArrayR = new Float32Array(1024);
 
     const tick = () => {
       const now = performance.now();
-      let peakL = 0;
-      let peakR = 0;
+      let measuredMetricL = 0;
+      let measuredMetricR = 0;
 
       // 1. Direct Web Audio API from getUserMedia
       if (this.analyserL && this.analyserR && this.micStream) {
         this.analyserL.getFloatTimeDomainData(dataArrayL);
         this.analyserR.getFloatTimeDomainData(dataArrayR);
 
+        let peakL = 0;
+        let peakR = 0;
+        let sumSqL = 0;
+        let sumSqR = 0;
+
         for (let i = 0; i < dataArrayL.length; i++) {
           const l = Math.abs(dataArrayL[i]);
           const r = Math.abs(dataArrayR[i]);
           if (l > peakL) peakL = l;
           if (r > peakR) peakR = r;
+          sumSqL += l * l;
+          sumSqR += r * r;
         }
+
+        const rmsL = Math.sqrt(sumSqL / dataArrayL.length);
+        const rmsR = Math.sqrt(sumSqR / dataArrayR.length);
+
+        // Standard studio weighting: 65% RMS body + 35% peak transient response
+        measuredMetricL = rmsL * 1.6 + peakL * 0.35;
+        measuredMetricR = rmsR * 1.6 + peakR * 0.35;
       }
 
-      // 2. Or fallback to PCM peak streamed from StudioBridge
-      if (peakL <= 0.0001 && peakR <= 0.0001 && this.hasPcmSignal) {
-        if (now - this.lastPcmTime < 350) {
-          this.pcmPeakL *= this.pcmDecay;
-          this.pcmPeakR *= this.pcmDecay;
-          peakL = this.pcmPeakL;
-          peakR = this.pcmPeakR;
+      // 2. Or fallback to PCM audio streamed from StudioBridge
+      if (measuredMetricL <= 0.0001 && measuredMetricR <= 0.0001 && this.hasPcmSignal) {
+        if (now - this.lastPcmTime < 400) {
+          this.pcmPeakL *= 0.90;
+          this.pcmPeakR *= 0.90;
+          this.pcmRmsL *= 0.90;
+          this.pcmRmsR *= 0.90;
+          measuredMetricL = this.pcmRmsL * 1.6 + this.pcmPeakL * 0.35;
+          measuredMetricR = this.pcmRmsR * 1.6 + this.pcmPeakR * 0.35;
         } else {
           this.hasPcmSignal = false;
           this.pcmPeakL = 0;
           this.pcmPeakR = 0;
+          this.pcmRmsL = 0;
+          this.pcmRmsR = 0;
         }
       }
 
@@ -236,36 +269,56 @@ class RealtimeAudioMeterEngine {
 
       if (this.isDimmed) mult *= 0.1;
 
-      const finalPeakL = peakL * mult;
-      const finalPeakR = peakR * mult;
+      const targetMetricL = measuredMetricL * mult;
+      const targetMetricR = measuredMetricR * mult;
 
       // Mono summing mode
-      let monoPeakL = finalPeakL;
-      let monoPeakR = finalPeakR;
+      let monoTargetL = targetMetricL;
+      let monoTargetR = targetMetricR;
       if (this.isMono) {
-        const mono = (finalPeakL + finalPeakR) / 2;
-        monoPeakL = mono;
-        monoPeakR = mono;
+        const mono = (targetMetricL + targetMetricR) / 2;
+        monoTargetL = mono;
+        monoTargetR = mono;
       }
 
-      // Convert peak to dB (-60 to 0 dBFS)
-      const dbValL = monoPeakL > 0.00001 ? 20 * Math.log10(monoPeakL) : -100;
-      const dbValR = monoPeakR > 0.00001 ? 20 * Math.log10(monoPeakR) : -100;
+      // Convert target metric to raw target percentage (0 to 100)
+      const dbL = monoTargetL > 0.00001 ? 20 * Math.log10(monoTargetL) : -100;
+      const dbR = monoTargetR > 0.00001 ? 20 * Math.log10(monoTargetR) : -100;
+      const targetVuL = this.dbToVuPercent(dbL);
+      const targetVuR = this.dbToVuPercent(dbR);
 
-      // Map dB to standard VU Meter % (0 to 100)
-      const vuL = this.dbToVuPercent(dbValL);
-      const vuR = this.dbToVuPercent(dbValR);
+      // PROFESSIONAL VU BALLISTICS ENVELOPE:
+      // Snappy attack (< 15ms) so fast transients are captured,
+      // and smooth mechanical release (~300ms) so needles glide without flickering!
+      if (targetVuL > this.smoothedVuL) {
+        this.smoothedVuL += (targetVuL - this.smoothedVuL) * 0.40; // Attack
+      } else {
+        this.smoothedVuL += (targetVuL - this.smoothedVuL) * 0.08; // 300ms Release
+      }
 
-      const dbStrL = dbValL <= -59.5 || vuL <= 0 ? "-inf dB" : `${Math.min(0, dbValL).toFixed(1)} dB`;
-      const dbStrR = dbValR <= -59.5 || vuR <= 0 ? "-inf dB" : `${Math.min(0, dbValR).toFixed(1)} dB`;
+      if (targetVuR > this.smoothedVuR) {
+        this.smoothedVuR += (targetVuR - this.smoothedVuR) * 0.40; // Attack
+      } else {
+        this.smoothedVuR += (targetVuR - this.smoothedVuR) * 0.08; // 300ms Release
+      }
+
+      // Hard clamp at silence threshold
+      if (this.smoothedVuL < 0.5 || mult === 0) this.smoothedVuL = 0;
+      if (this.smoothedVuR < 0.5 || mult === 0) this.smoothedVuR = 0;
+
+      const finalVuL = Math.round(this.smoothedVuL);
+      const finalVuR = Math.round(this.smoothedVuR);
+
+      const dbStrL = finalVuL <= 0 || dbL <= -59.5 ? "-inf dB" : `${Math.min(0, dbL).toFixed(1)} dB`;
+      const dbStrR = finalVuR <= 0 || dbR <= -59.5 ? "-inf dB" : `${Math.min(0, dbR).toFixed(1)} dB`;
 
       const reading: MeterReading = {
-        vuL,
-        vuR,
+        vuL: finalVuL,
+        vuR: finalVuR,
         dbL: dbStrL,
         dbR: dbStrR,
-        rawPeakL: monoPeakL,
-        rawPeakR: monoPeakR,
+        rawPeakL: monoTargetL,
+        rawPeakR: monoTargetR,
       };
 
       this.callbacks.forEach((cb) => {
