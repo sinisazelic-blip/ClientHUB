@@ -6,6 +6,7 @@ import ReceptionLobby from "@/components/ReceptionLobby";
 import StudioDirectorConsole from "@/components/StudioDirectorConsole";
 import { ClaHardwareConsole } from "@/components/ClaHardwareConsole";
 import PublicLandingPage from "@/components/PublicLandingPage";
+import { realtimeAudioMeter } from "@/lib/realtimeAudioMeter";
 import {
   Tv,
   Mic,
@@ -208,6 +209,11 @@ export default function ClientHubPage() {
 
   const activeConsole = currentRole === "agency_tenant" ? agencyConsole : guestConsole;
   const updateActiveConsole = (patch: Partial<typeof agencyConsole>) => {
+    if (patch.phonesVol !== undefined) realtimeAudioMeter.setVolume(patch.phonesVol);
+    if (patch.isMuted !== undefined) realtimeAudioMeter.setMute(patch.isMuted);
+    if (patch.isDimmed !== undefined) realtimeAudioMeter.setDim(patch.isDimmed);
+    if (patch.monitorMode !== undefined) realtimeAudioMeter.setMono(patch.monitorMode === "mono");
+
     if (currentRole === "agency_tenant") {
       setAgencyConsole((prev) => ({ ...prev, ...patch }));
     } else {
@@ -613,16 +619,16 @@ export default function ClientHubPage() {
 
   return (
     <div className="min-h-screen studio-light-bg text-slate-800 flex flex-col font-sans">
-      {/* GLOBAL ROLE SWITCHER BAR WITH OFFICIAL FLUXAX CLIENT HUB BRANDING */}
-      <div className="bg-white/95 border-b border-teal-200/80 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs z-50 backdrop-blur-md shadow-sm">
+      {/* GLOBAL ROLE SWITCHER BAR WITH OFFICIAL FLUXAX CLIENT HUB BRANDING (Dark Slate Top Bar) */}
+      <div className="bg-slate-950 border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs z-50 backdrop-blur-md shadow-md text-white">
         <div className="flex items-center gap-4">
           <FluxaxNetLogo size="sm" />
 
-          <div className="hidden sm:flex items-center gap-2 border-l border-teal-200 pl-4">
-            <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
+          <div className="hidden sm:flex items-center gap-2 border-l border-slate-800 pl-4">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Režim Prikaza:
             </span>
-            <div className="inline-flex bg-teal-50/80 p-0.5 rounded-lg border border-teal-200">
+            <div className="inline-flex bg-slate-900 p-0.5 rounded-lg border border-slate-800">
               {isDirectorAuth && (
                 <button
                   onClick={() => {
@@ -636,8 +642,8 @@ export default function ClientHubPage() {
                   }}
                   className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                     currentRole === "studio_director"
-                      ? "bg-teal-700 text-white shadow-sm"
-                      : "text-slate-600 hover:text-teal-900"
+                      ? "bg-teal-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
                   }`}
                 >
                   Studio
@@ -648,7 +654,7 @@ export default function ClientHubPage() {
                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                   currentRole === "agency_tenant"
                     ? "bg-teal-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-teal-900"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Naručilac (Agencija)
@@ -658,7 +664,7 @@ export default function ClientHubPage() {
                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                   currentRole === "guest_participant"
                     ? "bg-teal-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-teal-900"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Klijent (Gost)
@@ -672,24 +678,24 @@ export default function ClientHubPage() {
             <button
               onClick={handleDirectorLogout}
               title="Odjavi se iz režije i zaključaj pristup"
-              className="px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+              className="px-2.5 py-1 rounded-lg border border-red-900/60 bg-red-950/40 hover:bg-red-900/60 text-red-300 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
             >
-              <LogOut className="w-3.5 h-3.5 text-red-600" />
+              <LogOut className="w-3.5 h-3.5 text-red-400" />
               <span className="hidden sm:inline">Odjava Režije</span>
             </button>
           )}
           <button
             onClick={() => setShowLandingPage(true)}
             title="Prikaži javnu prezentacionu početnu stranicu FluxaX portala (fluxax.ba)"
-            className="px-2.5 py-1 rounded-lg border border-teal-200/80 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            className="px-2.5 py-1 rounded-lg border border-slate-700/80 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
           >
-            <Globe className="w-3.5 h-3.5 text-teal-600" />
+            <Globe className="w-3.5 h-3.5 text-teal-400" />
             <span className="hidden sm:inline">fluxax.ba Portal</span>
           </button>
           <FluxaxDynamicLiveStreamBadge className="hidden md:block" />
-          <div className="text-[11px] text-teal-900 font-mono font-semibold flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-300 font-bold font-mono text-[10px]">
+          <div className="text-[11px] text-slate-300 font-mono font-semibold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="px-2 py-0.5 rounded bg-slate-900 text-teal-400 border border-slate-700 font-bold font-mono text-[10px]">
               v{APP_CONFIG.version}
             </span>
           </div>

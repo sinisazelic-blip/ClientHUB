@@ -46,6 +46,7 @@ import {
 } from "@/app/api/studio/status/route";
 import { format24Time } from "@/lib/formatTime";
 import { APP_CONFIG } from "@/config/appConfig";
+import { realtimeAudioMeter } from "@/lib/realtimeAudioMeter";
 
 interface StudioDirectorConsoleProps {
   session: SessionItem;
@@ -216,19 +217,56 @@ export default function StudioDirectorConsole({
   };
 
   const wsRef = useRef<WebSocket | null>(null);
+  const [isDirectWebAudio, setIsDirectWebAudio] = useState<boolean>(false);
+
+  // Subscribe to real-time 60 FPS Web Audio Engine on the host
+  useEffect(() => {
+    realtimeAudioMeter.setVolume(volClientRef.current);
+    const unsubscribe = realtimeAudioMeter.subscribe((reading) => {
+      setMasterVuL(reading.vuL);
+      setMasterVuR(reading.vuR);
+      setMasterDbL(reading.dbL);
+      setMasterDbR(reading.dbR);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleToggleDirectAudio = async () => {
+    if (isDirectWebAudio) {
+      realtimeAudioMeter.stopDirectHardwareAudio();
+      setIsDirectWebAudio(false);
+    } else {
+      const ok = await realtimeAudioMeter.startDirectHardwareAudio();
+      if (ok) setIsDirectWebAudio(true);
+    }
+  };
 
   // WebSocket connect to StudioBridge for real hardware meters and controls
   useEffect(() => {
     let ws: WebSocket | null = null;
     try {
-      const host = window.location.hostname || "127.0.0.1";
-      ws = new WebSocket(`ws://${host}:4040/ws`);
+      // Connect to local StudioBridge daemon on 127.0.0.1
+      ws = new WebSocket("ws://127.0.0.1:4040/ws");
+      ws.binaryType = "arraybuffer";
       wsRef.current = ws;
 
-      ws.onopen = () => setIsBridgeOnline(true);
+      ws.onopen = () => {
+        setIsBridgeOnline(true);
+        // Request raw live audio PCM stream
+        try {
+          ws?.send(JSON.stringify({ type: "SUBSCRIBE_AUDIO" }));
+        } catch (_) {}
+      };
       ws.onclose = () => setIsBridgeOnline(false);
 
       ws.onmessage = (e) => {
+        // Binary raw float32 PCM frame from StudioBridge
+        if (e.data instanceof ArrayBuffer) {
+          const pcmData = new Float32Array(e.data);
+          realtimeAudioMeter.feedPcmChunk(pcmData);
+          return;
+        }
+
         try {
           const msg = JSON.parse(e.data);
           if (msg.type === "METERS_TICK") {
@@ -498,6 +536,7 @@ export default function StudioDirectorConsole({
   const handleVolClientChange = (val: number) => {
     setVolClient(val);
     volClientRef.current = val;
+    realtimeAudioMeter.setVolume(val);
     applyVuLevels(rawVuLRef.current, rawVuRRef.current, val);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "UPDATE_CHANNEL", channelType: "output", id: 1, level: val }));
@@ -655,18 +694,29 @@ export default function StudioDirectorConsole({
                   <Info className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <div className="text-[10px] font-mono font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                48k / 24-bit
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleToggleDirectAudio}
+                  title="Kliknite za direktan prijem zvuka sa vaše zvučne kartice u browseru (60 FPS Web Audio)"
+                  className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border transition-colors cursor-pointer flex items-center gap-1 ${
+                    isDirectWebAudio
+                      ? "bg-red-500 text-white border-red-600 animate-pulse"
+                      : "bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100"
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isDirectWebAudio ? "bg-white" : "bg-teal-600"}`} />
+                  <span>{isDirectWebAudio ? "ASIO/WASAPI DIRECT (60 FPS)" : "48k / 24-bit PCM"}</span>
+                </button>
               </div>
             </div>
 
-            {/* Stereo VU Bars */}
+            {/* Stereo VU Bars (Instant 60 FPS needle response) */}
             <div className="space-y-2.5 my-2">
               <div className="flex items-center gap-2">
                 <span className="w-3 font-mono text-xs font-bold text-slate-500">L</span>
                 <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-all duration-75"
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-none"
                     style={{ width: `${masterVuL}%` }}
                   />
                 </div>
@@ -677,7 +727,7 @@ export default function StudioDirectorConsole({
                 <span className="w-3 font-mono text-xs font-bold text-slate-500">R</span>
                 <div className="flex-1 h-3.5 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shadow-inner">
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-all duration-75"
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-none"
                     style={{ width: `${masterVuR}%` }}
                   />
                 </div>

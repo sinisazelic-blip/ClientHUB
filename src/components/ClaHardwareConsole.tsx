@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Mic, MicOff, Volume2, VolumeX, Radio, Shield, Headphones } from "lucide-react";
+import { realtimeAudioMeter } from "@/lib/realtimeAudioMeter";
 
 interface ClaConsoleProps {
   studioName?: string;
@@ -82,19 +83,36 @@ export function ClaHardwareConsole({
   const micStreamRef = useRef<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Live WebSocket metering from StudioBridge (zero fake math, pure live studio feed)
+  // Live 60 FPS Web Audio & StudioBridge metering
   useEffect(() => {
+    realtimeAudioMeter.setVolume(phonesVol);
+    realtimeAudioMeter.setMute(!!isMuted);
+    realtimeAudioMeter.setDim(!!isDimmed);
+    realtimeAudioMeter.setMono(monitorMode === "mono");
+
+    const unsubscribe = realtimeAudioMeter.subscribe((reading) => {
+      setStreamMeterL(reading.vuL);
+      setStreamMeterR(reading.vuR);
+    });
+
     let ws: WebSocket | null = null;
     try {
-      const host = window.location.hostname || "127.0.0.1";
-      ws = new WebSocket(`ws://${host}:4040/ws`);
+      ws = new WebSocket("ws://127.0.0.1:4040/ws");
+      ws.binaryType = "arraybuffer";
       wsRef.current = ws;
 
+      ws.onopen = () => {
+        try { ws?.send(JSON.stringify({ type: "SUBSCRIBE_AUDIO" })); } catch (_) {}
+      };
+
       ws.onmessage = (e) => {
+        if (e.data instanceof ArrayBuffer) {
+          realtimeAudioMeter.feedPcmChunk(new Float32Array(e.data));
+          return;
+        }
         try {
           const msg = JSON.parse(e.data);
           if (msg.type === "METERS_TICK" && Array.isArray(msg.outputs)) {
-            // Bus Out 1/2 or Out 7/8 (Main Studio / DAW Program stream)
             const outL = msg.outputs.find((o: any) => o.id === 1 || o.id === 7);
             const outR = msg.outputs.find((o: any) => o.id === 2 || o.id === 8);
             setRawStreamL(outL && typeof outL.level === "number" ? outL.level : 0);
@@ -116,33 +134,12 @@ export function ClaHardwareConsole({
       setRawStreamR(0);
     }
 
-    let pollInterval: NodeJS.Timeout | null = null;
-    const fetchApiMeters = async () => {
-      try {
-        const res = await fetch("/api/studio/status");
-        const data = await res.json();
-        if (data.isOnline && data.meters) {
-          setRawStreamL(data.meters.masterVuL ?? 0);
-          setRawStreamR(data.meters.masterVuR ?? 0);
-        } else if (!data.isOnline) {
-          setRawStreamL(0);
-          setRawStreamR(0);
-        }
-      } catch (_) {}
-    };
-
-    pollInterval = setInterval(() => {
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        fetchApiMeters();
-      }
-    }, 1000);
-
     return () => {
+      unsubscribe();
       if (ws) ws.close();
-      if (pollInterval) clearInterval(pollInterval);
       wsRef.current = null;
     };
-  }, []);
+  }, [phonesVol, isMuted, isDimmed, monitorMode]);
 
   // Compute actual attenuated/ducked VU levels from REAL incoming sound
   useEffect(() => {

@@ -182,7 +182,7 @@ export default function RemoteSession() {
             {/* Mixer Hardware Strip (4 Ulazna Kanala + Master Bus) */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 p-6 rounded-2xl bg-[#0b0e14] border border-stone-800/80 mb-8">
               
-              {/* Kanal 1: Vokalna Gluva Soba (Neumann U87) */}
+              {/* Kanal 1: Vokalna Gluva Soba (Glavni Mikrofon) */}
               <div className="flex flex-col items-center bg-stone-900/60 p-4 rounded-xl border border-stone-800">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold mb-1">
                   Kanal 1
